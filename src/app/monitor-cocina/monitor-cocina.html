@@ -1,0 +1,116 @@
+<div class="bg-[#0c0a09] min-h-screen text-white p-6 font-sans flex flex-col h-screen overflow-hidden">
+
+  <div class="flex justify-between items-center mb-6 pb-4 border-b border-zinc-800 shrink-0">
+    <div class="flex items-center gap-4">
+      <a routerLink="/admin" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 p-3 rounded-xl transition-colors cursor-pointer">
+        <span class="material-symbols-outlined">home</span>
+      </a>
+      <div>
+        <h1 class="text-3xl font-black text-orange-500 uppercase tracking-tighter flex items-center gap-2">
+          <span class="material-symbols-outlined text-4xl">local_fire_department</span> KDS Cocina
+        </h1>
+      </div>
+    </div>
+
+    <button (click)="generarAnalisisIA()" [disabled]="pensandoIA"
+      class="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-black tracking-widest uppercase flex items-center gap-2 shadow-[0_0_20px_rgba(147,51,234,0.3)] transition-all active:scale-95 disabled:opacity-50">
+      <span class="material-symbols-outlined" [class.animate-spin]="pensandoIA">smart_toy</span>
+      {{ pensandoIA ? 'ANALIZANDO SALA...' : 'IA: OPTIMIZAR LOTE' }}
+    </button>
+  </div>
+
+  @if (analisisIA) {
+    <div class="bg-purple-900/20 border border-purple-500/30 p-6 rounded-2xl mb-6 flex gap-4 items-start shrink-0 animate-fade-in">
+      <div class="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center text-purple-400 shrink-0">
+        <span class="material-symbols-outlined text-3xl">psychology</span>
+      </div>
+      <div>
+        <h3 class="text-purple-400 font-black uppercase tracking-widest text-xs mb-2">Asistente de Cocina IA</h3>
+        <p class="text-white font-medium whitespace-pre-line leading-relaxed">{{ analisisIA }}</p>
+      </div>
+      <button (click)="analisisIA = null" class="ml-auto text-zinc-500 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+    </div>
+  }
+
+  <div class="flex-1 grid grid-cols-3 gap-6 overflow-hidden">
+    
+    <div class="bg-zinc-900/50 border border-zinc-800 rounded-[2rem] flex flex-col overflow-hidden">
+      <div class="bg-red-500/10 border-b border-red-500/20 p-4 flex justify-between items-center">
+        <h2 class="text-red-500 font-black uppercase tracking-widest flex items-center gap-2"><span class="material-symbols-outlined">receipt_long</span> Nuevos Pedidos</h2>
+        <span class="bg-red-500 text-black font-black w-8 h-8 rounded-full flex items-center justify-center">{{ comandasPendientes.length }}</span>
+      </div>
+      <div class="flex-1 p-4 overflow-y-auto space-y-4">
+        @for (ticket of comandasPendientes; track ticket.id) {
+          <div class="bg-zinc-800 border border-zinc-700 p-5 rounded-2xl shadow-lg relative">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-zinc-700/50">
+              <span class="text-2xl font-black text-white">Mesa {{ ticket.numeroMesa }}</span>
+              <span class="text-xs text-zinc-400 font-bold bg-zinc-900 px-2 py-1 rounded-md">{{ ticket.items?.length || 0 }} Platos</span>
+            </div>
+            <ul class="space-y-2 mb-6">
+              @for (item of ticket.items; track $index) {
+                <li class="font-bold text-zinc-300 flex items-start gap-2">
+                  <span class="text-red-500 mt-0.5">•</span> {{ item.name }}
+                </li>
+              }
+            </ul>
+            <button (click)="cambiarEstadoCocina(ticket.id, 'Preparando')" class="w-full bg-orange-600 hover:bg-orange-500 text-white py-3 rounded-xl font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors">
+              <span class="material-symbols-outlined">local_fire_department</span> Marchar Fuego
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="bg-zinc-900/50 border border-zinc-800 rounded-[2rem] flex flex-col overflow-hidden">
+      <div class="bg-orange-500/10 border-b border-orange-500/20 p-4 flex justify-between items-center">
+        <h2 class="text-orange-500 font-black uppercase tracking-widest flex items-center gap-2"><span class="material-symbols-outlined">skillet</span> En Preparación</h2>
+        <span class="bg-orange-500 text-black font-black w-8 h-8 rounded-full flex items-center justify-center">{{ comandasPreparando.length }}</span>
+      </div>
+      <div class="flex-1 p-4 overflow-y-auto space-y-4">
+        @for (ticket of comandasPreparando; track ticket.id) {
+          <div class="bg-zinc-800 border border-orange-500/30 p-5 rounded-2xl shadow-[0_0_15px_rgba(249,115,22,0.1)] relative">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-zinc-700/50">
+              <span class="text-2xl font-black text-white">Mesa {{ ticket.numeroMesa }}</span>
+              <span class="flex h-3 w-3 relative">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
+              </span>
+            </div>
+            <ul class="space-y-2 mb-6">
+              @for (item of ticket.items; track $index) {
+                <li class="font-bold text-zinc-300 flex items-start gap-2">
+                  <span class="text-orange-500 mt-0.5">•</span> {{ item.name }}
+                </li>
+              }
+            </ul>
+            <button (click)="cambiarEstadoCocina(ticket.id, 'Listo')" class="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-xl font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors">
+              <span class="material-symbols-outlined">room_service</span> Listo / Pase
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="bg-zinc-900/50 border border-zinc-800 rounded-[2rem] flex flex-col overflow-hidden">
+      <div class="bg-green-500/10 border-b border-green-500/20 p-4 flex justify-between items-center">
+        <h2 class="text-green-500 font-black uppercase tracking-widest flex items-center gap-2"><span class="material-symbols-outlined">done_all</span> En el Pase</h2>
+        <span class="bg-green-500 text-black font-black w-8 h-8 rounded-full flex items-center justify-center">{{ comandasListas.length }}</span>
+      </div>
+      <div class="flex-1 p-4 overflow-y-auto space-y-4">
+        @for (ticket of comandasListas; track ticket.id) {
+          <div class="bg-zinc-800 border border-green-500/30 p-5 rounded-2xl relative opacity-70 hover:opacity-100 transition-opacity">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-zinc-700/50">
+              <span class="text-2xl font-black text-white">Mesa {{ ticket.numeroMesa }}</span>
+              <span class="material-symbols-outlined text-green-500">check_circle</span>
+            </div>
+            <p class="text-sm font-bold text-zinc-400 mb-4">A la espera de que sala se lo lleve.</p>
+            <button (click)="cambiarEstadoCocina(ticket.id, 'Preparando')" class="w-full bg-zinc-700 hover:bg-zinc-600 text-zinc-300 py-2 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors">
+              <span class="material-symbols-outlined text-[16px]">undo</span> Devolver a fuegos
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+
+  </div>
+</div>

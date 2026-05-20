@@ -1,0 +1,131 @@
+<div class="bg-[#0c0a09] min-h-screen text-white p-8 font-sans">
+  <div class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-6">
+    <div class="flex items-center gap-5">
+      <a routerLink="/admin"
+        class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-bold transition-all text-sm">←
+        Volver</a>
+      <div>
+        <h1 class="text-3xl font-bold text-yellow-500 tracking-tight">Gestión de Personal</h1>
+        <p class="text-zinc-500 text-sm mt-1">Administra los accesos y roles de tu equipo</p>
+      </div>
+    </div>
+    <button (click)="abrirModal()"
+      class="bg-yellow-500 text-black px-6 py-3 rounded-xl font-bold hover:bg-yellow-400 shadow-xl">
+      + NUEVO EMPLEADO
+    </button>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    @for (emp of empleados; track emp.id) {
+    <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl relative overflow-hidden group">
+      <div class="flex items-center gap-4 mb-4">
+        <div class="h-12 w-12 rounded-full bg-zinc-800 flex items-center justify-center text-yellow-500">
+          <span class="material-symbols-outlined text-3xl">person</span>
+        </div>
+        <div>
+          <h3 class="font-bold text-lg">{{ emp.nombre }}</h3>
+          <div class="flex gap-2 items-center mt-1">
+            <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-md"
+              [class.bg-purple-500]="emp.rol === 'Gerente'" [class.bg-blue-500]="emp.rol === 'Camarero'">
+              {{ emp.rol }}
+            </span>
+            <span class="text-[10px] text-zinc-400 font-mono">@{{ emp.usuario }}</span>
+          </div>
+        </div>
+      </div>
+
+      @if (emp.rol === 'Camarero') {
+      <div class="flex gap-2 mb-4">
+        @if (emp.permisos?.cobrarMesas) { <span
+          class="text-[10px] bg-green-500/10 text-green-500 px-2 py-1 rounded border border-green-500/20 font-bold">Cobrar
+          ✔</span> }
+        @if (emp.permisos?.verVentas) { <span
+          class="text-[10px] bg-orange-500/10 text-orange-500 px-2 py-1 rounded border border-orange-500/20 font-bold">Ventas
+          ✔</span> }
+        @if (emp.permisos?.verInventario) { <span
+          class="text-[10px] bg-blue-500/10 text-blue-500 px-2 py-1 rounded border border-blue-500/20 font-bold">Stock
+          ✔</span> }
+      </div>
+      }
+
+      <div class="flex justify-between items-center pt-4 border-t border-zinc-800">
+        <span class="text-xs text-zinc-600 font-mono italic">PIN: {{ emp.pin }}</span>
+        <div class="flex gap-4">
+          <button (click)="editarEmpleado(emp)"
+            class="text-blue-500 hover:text-blue-400 text-xs font-bold transition-colors">EDITAR</button>
+          <button (click)="borrarEmpleado(emp.id)"
+            class="text-red-500 hover:text-red-400 text-xs font-bold transition-colors">BORRAR</button>
+        </div>
+      </div>
+    </div>
+    }
+  </div>
+
+  @if (mostrarModal) {
+  <div class="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 z-50">
+    <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl w-full max-w-md shadow-2xl">
+      <h2 class="text-2xl font-bold mb-6 text-yellow-500">
+        {{ editandoId ? 'Editar Empleado' : 'Dar de Alta Empleado' }}
+      </h2>
+
+      <div class="space-y-4">
+        <input type="text" [(ngModel)]="nuevoEmpleado.nombre" placeholder="Nombre completo (ej: Pedro Pérez)"
+          class="w-full bg-zinc-800 border border-zinc-700 p-4 rounded-xl text-white outline-none focus:border-yellow-500">
+
+        <div class="relative">
+          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-bold">@</span>
+          <input type="text" [(ngModel)]="nuevoEmpleado.usuario" placeholder="Nombre de usuario"
+            class="w-full bg-zinc-800 border border-zinc-700 p-4 pl-8 rounded-xl text-yellow-500 outline-none focus:border-yellow-500 font-bold">
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <input type="text" [(ngModel)]="nuevoEmpleado.pin" placeholder="PIN (4 cifras)"
+            class="w-full bg-zinc-800 border border-zinc-700 p-4 rounded-xl text-white font-bold text-center tracking-widest outline-none focus:border-yellow-500">
+          <select [(ngModel)]="nuevoEmpleado.rol"
+            class="w-full bg-zinc-800 border border-zinc-700 p-4 rounded-xl text-white outline-none cursor-pointer">
+            <option value="Camarero">Camarero</option>
+            <option value="Gerente">Gerente</option>
+          </select>
+        </div>
+
+        @if (nuevoEmpleado.rol === 'Camarero') {
+        <div class="bg-zinc-800/50 border border-zinc-700 p-4 rounded-xl mt-4">
+          <p class="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-3">Permisos Especiales</p>
+          <div class="space-y-3">
+            <label class="flex items-center gap-3 cursor-pointer group">
+              <input type="checkbox" [(ngModel)]="nuevoEmpleado.permisos.cobrarMesas"
+                class="w-5 h-5 accent-yellow-500 bg-zinc-800 border-zinc-700 rounded cursor-pointer">
+              <span class="text-sm font-medium text-zinc-300 group-hover:text-white transition-colors">Permitir COBRAR
+                mesas</span>
+            </label>
+
+            <label class="flex items-center gap-3 cursor-pointer group">
+              <input type="checkbox" [(ngModel)]="nuevoEmpleado.permisos.verVentas"
+                class="w-5 h-5 accent-yellow-500 bg-zinc-800 border-zinc-700 rounded cursor-pointer">
+              <span class="text-sm font-medium text-zinc-300 group-hover:text-white transition-colors">Ver Historial de
+                Ventas</span>
+            </label>
+
+            <label class="flex items-center gap-3 cursor-pointer group">
+              <input type="checkbox" [(ngModel)]="nuevoEmpleado.permisos.verInventario"
+                class="w-5 h-5 accent-yellow-500 bg-zinc-800 border-zinc-700 rounded cursor-pointer">
+              <span class="text-sm font-medium text-zinc-300 group-hover:text-white transition-colors">Acceso al
+                Inventario</span>
+            </label>
+          </div>
+        </div>
+        }
+
+        <div class="flex gap-4 pt-6">
+          <button (click)="cerrarModal()"
+            class="flex-1 py-4 text-zinc-400 font-bold hover:text-white transition-colors">CANCELAR</button>
+          <button (click)="guardarEmpleado()"
+            class="flex-1 py-4 bg-yellow-500 text-black font-bold rounded-xl shadow-lg hover:bg-yellow-400 transition-all">
+            {{ editandoId ? 'ACTUALIZAR' : 'GUARDAR' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+</div>

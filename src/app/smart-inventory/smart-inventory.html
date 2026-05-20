@@ -1,0 +1,180 @@
+<div class="bg-[#0c0a09] min-h-screen text-white p-8 font-sans">
+
+  <div class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-6">
+    <div class="flex items-center gap-5">
+      <a routerLink="/admin"
+        class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-bold text-sm">← Volver</a>
+      <div>
+        <h1 class="text-3xl font-bold text-yellow-500 tracking-tight">Inventario Inteligente</h1>
+        <p class="text-zinc-500 text-xs">Gestión de stock sincronizada automáticamente con Caja</p>
+      </div>
+    </div>
+
+    <button (click)="abrir()"
+      class="bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-3 rounded-xl font-black text-sm flex items-center gap-2 transition-all active:scale-95">
+      <span class="material-symbols-outlined">add</span> NUEVO PRODUCTO
+    </button>
+  </div>
+
+  <div class="mb-8 bg-zinc-900 border border-emerald-500/30 rounded-[2rem] p-6 relative overflow-hidden shadow-2xl">
+    <div class="absolute top-0 left-0 w-1 bg-gradient-to-b from-emerald-500 to-teal-600 h-full"></div>
+    <div class="flex justify-between items-center mb-4 pl-2">
+      <div>
+        <h3 class="text-xl font-black text-white flex items-center gap-2">
+          <span class="material-symbols-outlined text-emerald-400">inventory_2</span>
+          Asistente de Reabastecimiento
+        </h3>
+        <p class="text-xs text-zinc-400 mt-1">Escaneo de roturas de stock y optimización de compras</p>
+      </div>
+      <button type="button" (click)="generarAnalisisIA()" [disabled]="cargandoIA"
+        class="bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white px-5 py-3 rounded-xl font-black text-sm transition-all flex items-center gap-2">
+        @if (cargandoIA) {
+        <span class="material-symbols-outlined animate-spin text-sm">sync</span> Escaneando...
+        } @else {
+        <span class="material-symbols-outlined text-sm">troubleshoot</span> Analizar Almacén
+        }
+      </button>
+    </div>
+
+    <div class="bg-zinc-950 p-5 rounded-xl border border-zinc-800 min-h-[80px] flex items-center pl-4">
+      @if (cargandoIA) {
+      <div class="w-full space-y-3 animate-pulse">
+        <div class="h-2 bg-emerald-500/20 rounded w-3/4"></div>
+        <div class="h-2 bg-emerald-500/20 rounded w-1/2"></div>
+      </div>
+      } @else if (analisisIA) {
+      <p class="text-sm font-medium leading-relaxed" [class.text-red-300]="analisisIA.includes('⚠️')"
+        [class.text-emerald-100]="!analisisIA.includes('⚠️')">
+        {{ analisisIA }}
+      </p>
+      } @else {
+      <p class="text-sm text-zinc-600 font-bold">Pulsa el botón para detectar qué productos necesitas comprar
+        urgentemente.</p>
+      }
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    @for (item of listaProductos; track item.id) {
+    <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 relative flex flex-col justify-between shadow-xl">
+
+      <div class="flex justify-between items-start mb-4">
+        <div>
+          <span
+            class="text-[10px] font-black uppercase tracking-widest px-2 py-1 bg-zinc-800 text-zinc-400 rounded-lg">{{
+            item.category }}</span>
+          <h3 class="text-xl font-black text-white mt-2">{{ item.name }}</h3>
+          <p class="text-xs text-zinc-500 mt-1">Coste compra: <strong class="text-yellow-500">{{ item.purchasePrice || 0
+              }}€</strong>/{{ item.unit }}</p>
+        </div>
+        <div class="flex gap-2">
+          <button (click)="editar(item)" class="text-zinc-500 hover:text-white transition-colors"><span
+              class="material-symbols-outlined text-sm">edit</span></button>
+          <button (click)="borrar(item.id)" class="text-red-900 hover:text-red-500 transition-colors"><span
+              class="material-symbols-outlined text-sm">delete</span></button>
+        </div>
+      </div>
+
+      <div class="mb-6">
+        <div class="flex justify-between text-xs font-bold mb-2">
+          <span class="text-zinc-400">Stock Actual</span>
+          <span [class.text-red-500]="item.stock < (item.target * 0.2)"
+            [class.text-white]="item.stock >= (item.target * 0.2)">
+            {{ item.stock }} / {{ item.target }} {{ item.unit }}
+          </span>
+        </div>
+        <div class="w-full bg-zinc-950 rounded-full h-2 overflow-hidden border border-zinc-800">
+          <div class="h-2 rounded-full transition-all" [style.width.%]="(item.stock / item.target) * 100"
+            [class.bg-red-500]="item.stock < (item.target * 0.2)"
+            [class.bg-yellow-500]="item.stock >= (item.target * 0.2) && item.stock < (item.target * 0.6)"
+            [class.bg-emerald-500]="item.stock >= (item.target * 0.6)">
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-3">
+        <button (click)="restarStock(item)"
+          class="flex-1 bg-zinc-950 border border-zinc-800 hover:border-red-500 hover:text-red-500 text-zinc-400 py-3 rounded-xl font-black transition-colors">
+          - QUITAR
+        </button>
+        <button (click)="sumarStock(item)"
+          class="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-3 rounded-xl font-black transition-all active:scale-95 flex items-center justify-center gap-2">
+          + COMPRAR
+        </button>
+      </div>
+    </div>
+    } @empty {
+    <div class="col-span-full text-center py-20 text-zinc-600">
+      <span class="material-symbols-outlined text-6xl mb-4 block animate-pulse">cloud_download</span>
+      <p class="font-bold text-lg">Sincronizando almacén de Tapeando...</p>
+      <p class="text-sm text-zinc-500 mt-1">Conectando directamente con la base de datos de Firebase.</p>
+    </div>
+    }
+  </div>
+
+  @if (mostrarModal) {
+  <div class="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-[2rem] w-full max-w-xl shadow-2xl overflow-hidden">
+
+      <div class="bg-zinc-950 p-6 border-b border-zinc-800 flex justify-between items-center">
+        <h2 class="text-2xl font-black text-white">{{ editandoId ? 'Editar Producto' : 'Nuevo Producto' }}</h2>
+        <button (click)="cerrar()" class="text-zinc-500 hover:text-white">✕</button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Nombre del
+            Producto</label>
+          <input type="text" [(ngModel)]="nuevoProducto.name"
+            class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-colors">
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Categoría</label>
+            <select [(ngModel)]="nuevoProducto.category"
+              class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 appearance-none">
+              @for (cat of categorias; track cat) { <option [value]="cat">{{ cat }}</option> }
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Medida (Unidad)</label>
+            <select [(ngModel)]="nuevoProducto.unit"
+              class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 appearance-none">
+              @for (uni of unidades; track uni) { <option [value]="uni">{{ uni }}</option> }
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Precio Compra
+              (€)</label>
+            <input type="number" [(ngModel)]="nuevoProducto.purchasePrice" placeholder="0.00"
+              class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-colors">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Precio Venta (€)</label>
+            <input type="number" [(ngModel)]="nuevoProducto.salePrice" placeholder="0.00"
+              class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-colors">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Stock Ideal
+            (Target)</label>
+          <input type="number" [(ngModel)]="nuevoProducto.target"
+            class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-colors">
+        </div>
+      </div>
+
+      <div class="p-6 bg-zinc-950 border-t border-zinc-800">
+        <button (click)="guardarNuevo()"
+          class="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-4 rounded-xl font-black text-sm uppercase transition-all">
+          GUARDAR EN INVENTARIO
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+</div>

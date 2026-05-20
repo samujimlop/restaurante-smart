@@ -1,0 +1,103 @@
+<div class="bg-[#0c0a09] min-h-screen text-white p-8 font-sans">
+
+  <div class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-6">
+    <div class="flex items-center gap-5">
+      <a routerLink="/admin"
+        class="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-xl font-bold transition-all shadow-md cursor-pointer">
+        ← Volver al Panel
+      </a>
+      <div>
+        <h1 class="text-3xl font-bold text-yellow-500 tracking-tight">Gestión de Reservas</h1>
+        <p class="text-zinc-500 text-sm mt-1">Control de aforo y peticiones de clientes</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-zinc-900/50 rounded-2xl border border-zinc-800 overflow-hidden backdrop-blur-sm shadow-2xl">
+    <table class="w-full text-left">
+      <thead class="bg-zinc-800/80 text-zinc-400 text-xs uppercase tracking-widest">
+        <tr>
+          <th class="p-5 font-semibold">Cliente</th>
+          <th class="p-5 font-semibold">Fecha y Hora</th>
+          <th class="p-5 font-semibold text-center">Personas</th>
+          <th class="p-5 font-semibold text-center">Estado</th>
+          <th class="p-5 font-semibold text-right">Acciones</th>
+        </tr>
+      </thead>
+
+      <tbody class="divide-y divide-zinc-800">
+        @for (reserva of listaReservas; track reserva.id) {
+        <tr class="hover:bg-white/[0.02] transition-colors">
+
+          <td class="p-5">
+            <p class="text-lg font-bold text-zinc-100">{{ reserva.nombre }}</p>
+            <p class="text-zinc-500 text-sm mt-1 flex items-center gap-1">
+              📞 {{ reserva.telefono || 'Sin teléfono' }}
+            </p>
+          </td>
+
+          <td class="p-5">
+            <div class="flex flex-col">
+              <span class="text-white font-bold">{{ reserva.fecha | date:'dd/MM/yyyy' }}</span>
+              <span class="text-yellow-500 font-mono text-sm">{{ reserva.hora }}</span>
+            </div>
+          </td>
+
+          <td class="p-5 text-center">
+            <span class="text-2xl font-black text-zinc-300">{{ reserva.personas }}</span>
+            <span class="text-zinc-500 text-xs block">pax</span>
+          </td>
+
+          <td class="p-5 text-center">
+            <span class="px-3 py-1 text-xs font-bold uppercase rounded-full border"
+              [class.bg-yellow-500]="reserva.estado === 'Pendiente'" [class.text-black]="reserva.estado === 'Pendiente'"
+              [class.border-yellow-500]="reserva.estado === 'Pendiente'"
+              [class.bg-green-500/10]="reserva.estado === 'Confirmada'"
+              [class.text-green-500]="reserva.estado === 'Confirmada'"
+              [class.border-green-500/30]="reserva.estado === 'Confirmada'"
+              [class.bg-red-500/10]="reserva.estado === 'Cancelada'"
+              [class.text-red-500]="reserva.estado === 'Cancelada'"
+              [class.border-red-500/30]="reserva.estado === 'Cancelada'">
+              {{ reserva.estado || 'Pendiente' }}
+            </span>
+          </td>
+
+          <td class="p-5 text-right">
+            <div class="flex justify-end gap-2 items-center">
+
+              @if (reserva.estado !== 'Confirmada') {
+              <button (click)="cambiarEstado(reserva.id, 'Confirmada')"
+                class="bg-zinc-800 hover:bg-green-900/30 p-2 px-3 rounded-lg text-green-400 font-bold transition-colors"
+                title="Confirmar">
+                ✓ Confirmar
+              </button>
+              }
+
+              @if (reserva.estado !== 'Cancelada') {
+              <button (click)="cambiarEstado(reserva.id, 'Cancelada')"
+                class="bg-zinc-800 hover:bg-orange-900/30 p-2 px-3 rounded-lg text-orange-400 font-bold transition-colors"
+                title="Cancelar">
+                ✕ Cancelar
+              </button>
+              }
+
+              <button (click)="borrarReserva(reserva.id)"
+                class="bg-zinc-800 hover:bg-red-900/30 p-2 rounded-lg text-zinc-500 hover:text-red-500 transition-colors ml-4"
+                title="Borrar">
+                BORRAR
+              </button>
+            </div>
+          </td>
+
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="5" class="p-20 text-center text-zinc-600 italic">
+            Aún no hay reservas registradas en el sistema.
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

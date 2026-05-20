@@ -1,13 +1,41 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
+
 <head>
   <meta charset="utf-8">
-  <title>RestauranteSmart</title>
+  <title>Restaurante Smart</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#f49d25',
+            'background-light': '#1c1917',
+            'background-dark': '#0c0a09',
+            surface: '#292524',
+            'surface-highlight': '#44403c',
+            'text-main': '#fafaf9',
+            'text-muted': '#a8a29e',
+          }
+        }
+      }
+    }
+  </script>
 </head>
+
 <body>
   <app-root></app-root>
 </body>
+
 </html>

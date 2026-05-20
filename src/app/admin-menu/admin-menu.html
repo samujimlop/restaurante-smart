@@ -1,0 +1,143 @@
+<div class="bg-[#0c0a09] min-h-screen text-white p-8 font-sans">
+
+  <div class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-6">
+    <div class="flex items-center gap-5">
+      <a routerLink="/admin"
+        class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-bold transition-all cursor-pointer text-sm">←
+        Volver</a>
+      <div>
+        <h1 class="text-3xl font-bold text-yellow-500 tracking-tight">Editor de Menú</h1>
+        <p class="text-zinc-500 text-sm mt-1">Configura los platos y su coste de producción</p>
+      </div>
+    </div>
+
+    <div class="flex gap-3">
+      <button (click)="generarMenuMagico()"
+        class="bg-zinc-800 hover:bg-zinc-700 text-zinc-400 px-6 py-3 rounded-xl font-black flex items-center gap-2 border border-zinc-700 transition-all active:scale-95 text-xs">
+        <span class="material-symbols-outlined">auto_fix_high</span> GENERAR CARTA MÁGICA
+      </button>
+
+      <button (click)="abrir()"
+        class="bg-yellow-500 text-black px-6 py-3 rounded-xl font-bold hover:bg-yellow-400 shadow-lg shadow-yellow-500/10">
+        + NUEVO PLATO
+      </button>
+    </div>
+  </div>
+
+  <div class="bg-zinc-900/50 rounded-2xl border border-zinc-800 overflow-hidden shadow-2xl">
+    <table class="w-full text-left">
+      <thead class="bg-zinc-800/80 text-zinc-400 text-xs uppercase tracking-widest">
+        <tr>
+          <th class="p-5 font-semibold">Plato</th>
+          <th class="p-5 font-semibold">Categoría / Alérgenos</th>
+          <th class="p-5 font-semibold">Venta / Coste</th>
+          <th class="p-5 font-semibold text-right">Gestión</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-zinc-800">
+        @for (plato of listaPlatos; track plato.id) {
+        <tr class="hover:bg-white/[0.02] transition-colors">
+          <td class="p-5">
+            <p class="text-lg font-bold text-zinc-100">{{ plato.name }}</p>
+            <p class="text-zinc-500 text-sm italic mt-1">{{ plato.description || 'Sin descripción' }}</p>
+          </td>
+          <td class="p-5">
+            <span class="bg-zinc-800 text-zinc-400 text-[10px] uppercase px-2 py-1 rounded font-bold mr-2">{{
+              plato.category }}</span>
+            <div class="flex flex-wrap gap-1 mt-2">
+              @for (a of plato.allergens; track a) {
+              <span
+                class="text-[9px] bg-red-500/10 text-red-400 border border-red-500/20 px-1.5 rounded uppercase font-bold">{{
+                a }}</span>
+              }
+            </div>
+          </td>
+          <td class="p-5">
+            <div class="flex flex-col">
+              <span class="text-2xl font-black text-yellow-500">{{ plato.price }}€</span>
+              <span class="text-xs font-bold text-zinc-500 mt-1">Coste: {{ plato.costPrice || 0 }}€</span>
+            </div>
+          </td>
+          <td class="p-5 text-right">
+            <button (click)="editar(plato)" class="text-blue-400 hover:text-blue-300 font-bold mr-4">EDITAR</button>
+            <button (click)="borrar(plato.id)" class="text-zinc-500 hover:text-red-500 font-bold">BORRAR</button>
+          </td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="4" class="p-20 text-center text-zinc-600 italic">No hay platos. ¡Crea el primero!</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (mostrarModal) {
+  <div class="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
+    <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl w-full max-w-lg shadow-2xl my-8">
+      <h2 class="text-2xl font-bold mb-6 text-white">{{ editandoId ? 'Editar Plato' : 'Nuevo Plato' }}</h2>
+
+      <div class="space-y-5">
+        <div>
+          <label class="text-[10px] font-bold text-zinc-500 uppercase ml-1">Nombre</label>
+          <input type="text" [(ngModel)]="nuevoPlato.name" placeholder="Ej: Hamburguesa Trufada"
+            class="w-full bg-zinc-800 border border-zinc-700 p-4 rounded-xl text-white outline-none focus:border-yellow-500 mt-1">
+        </div>
+
+        <div>
+          <label class="text-[10px] font-bold text-zinc-500 uppercase ml-1">Descripción</label>
+          <textarea [(ngModel)]="nuevoPlato.description" placeholder="Ingredientes..."
+            class="w-full bg-zinc-800 border border-zinc-700 p-4 rounded-xl text-white outline-none h-20 mt-1"></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-[10px] font-bold text-zinc-500 uppercase ml-1">Precio Venta</label>
+            <input type="number" [(ngModel)]="nuevoPlato.price" placeholder="0.00"
+              class="w-full bg-zinc-800 border border-zinc-700 p-4 rounded-xl text-yellow-500 font-bold mt-1">
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-zinc-500 uppercase ml-1">Coste (Escandallo)</label>
+            <input type="number" [(ngModel)]="nuevoPlato.costPrice" placeholder="0.00"
+              class="w-full bg-zinc-800 border border-zinc-700 p-4 rounded-xl text-red-400 font-bold mt-1">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[10px] font-bold text-zinc-500 uppercase ml-1">Categoría</label>
+          <select [(ngModel)]="nuevoPlato.category"
+            class="w-full bg-zinc-800 border border-zinc-700 p-4 rounded-xl text-white outline-none mt-1">
+            @for (cat of categorias; track cat) { <option [value]="cat">{{ cat }}</option> }
+          </select>
+        </div>
+
+        <div>
+          <label class="text-[10px] font-bold text-zinc-500 uppercase ml-1 mb-2 block">Alérgenos (Haz clic para
+            marcar)</label>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            @for (aler of opcionesAllergens; track aler) {
+            <button (click)="toggleAllergen(aler)" type="button"
+              [class.bg-red-500]="nuevoPlato.allergens.includes(aler)"
+              [class.text-white]="nuevoPlato.allergens.includes(aler)"
+              [class.border-red-500]="nuevoPlato.allergens.includes(aler)"
+              [class.bg-zinc-800]="!nuevoPlato.allergens.includes(aler)"
+              [class.text-zinc-500]="!nuevoPlato.allergens.includes(aler)"
+              [class.border-zinc-700]="!nuevoPlato.allergens.includes(aler)"
+              class="py-2 rounded-lg border text-[10px] font-bold transition-all uppercase tracking-tighter">
+              {{ aler }}
+            </button>
+            }
+          </div>
+        </div>
+
+        <div class="flex gap-4 pt-6">
+          <button (click)="cerrar()" class="flex-1 py-4 text-zinc-400 font-bold">CANCELAR</button>
+          <button (click)="guardar()" class="flex-1 py-4 bg-yellow-500 text-black font-bold rounded-xl shadow-lg">
+            {{ editandoId ? 'ACTUALIZAR' : 'CREAR PLATO' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+</div>

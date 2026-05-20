@@ -1,0 +1,138 @@
+<div class="bg-[#0c0a09] min-h-screen text-white p-8 font-sans">
+
+    <div class="flex justify-between items-center mb-10 border-b border-zinc-800 pb-8">
+        <div>
+            <h1 class="text-4xl font-black text-yellow-500 tracking-tighter">Panel de Control</h1>
+            <p class="text-zinc-500 text-sm mt-1">Gestión integral de <strong class="text-zinc-300">Tapeando</strong>
+            </p>
+        </div>
+        <div
+            class="flex items-center gap-3 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-full text-xs text-zinc-400">
+            <span class="relative flex h-2 w-2">
+                <span
+                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            Sincronizado con Firebase
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <span class="material-symbols-outlined text-8xl">table_restaurant</span>
+            </div>
+            <p class="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-2">Mesas Ocupadas</p>
+            <p class="text-6xl font-black text-white">
+                {{ mesasOcupadas }} <span class="text-2xl text-zinc-700">/ {{ totalMesas }}</span>
+            </p>
+            <div class="mt-6">
+                <div class="flex justify-between text-[10px] font-bold text-zinc-500 mb-2 uppercase tracking-tighter">
+                    <span>Ocupación de la Sala</span>
+                    <span>{{ porcentajeOcupacion | number:'1.0-0' }}%</span>
+                </div>
+                <div class="w-full bg-zinc-950 rounded-full h-3 border border-zinc-800 overflow-hidden">
+                    <div class="h-full rounded-full transition-all duration-1000 ease-out"
+                        [style.width.%]="porcentajeOcupacion" [class.bg-blue-500]="porcentajeOcupacion < 80"
+                        [class.bg-red-500]="porcentajeOcupacion >= 80">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <span class="material-symbols-outlined text-8xl">receipt_long</span>
+            </div>
+            <p class="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-2">Tickets en Curso</p>
+            <p class="text-6xl font-black text-white">{{ mesasOcupadas }}</p>
+            <p class="text-zinc-500 text-sm mt-4 italic">Monitorizando pedidos desde el TPV...</p>
+        </div>
+    </div>
+
+    <h3 class="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-6 ml-2">Menús de Gestión</h3>
+
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+
+        <a routerLink="/mis-mesas"
+            class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
+            <div
+                class="w-12 h-12 bg-yellow-500/10 text-yellow-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <span class="material-symbols-outlined">grid_view</span>
+            </div>
+            <h4 class="font-bold text-white mb-1">Monitor Mesas</h4>
+            <p class="text-[10px] text-zinc-500 uppercase font-black">Acceso TPV</p>
+        </a>
+
+        <a routerLink="/inventory"
+            class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
+            <div
+                class="w-12 h-12 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <span class="material-symbols-outlined">inventory_2</span>
+            </div>
+            <h4 class="font-bold text-white mb-1">Inventario</h4>
+            <p class="text-[10px] text-zinc-500 uppercase font-black">Smart Stock</p>
+        </a>
+
+        <a routerLink="/admin-ventas"
+            class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
+            <div
+                class="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <span class="material-symbols-outlined">payments</span>
+            </div>
+            <h4 class="font-bold text-white mb-1">Flujo de Caja</h4>
+            <p class="text-[10px] text-zinc-500 uppercase font-black">Contabilidad</p>
+        </a>
+
+        <a routerLink="/monitor-cocina"
+            class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
+            <div
+                class="w-12 h-12 bg-orange-500/10 text-orange-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <span class="material-symbols-outlined">skillet</span>
+            </div>
+            <h4 class="font-bold text-white mb-1">Cocina</h4>
+            <p class="text-[10px] text-zinc-500 uppercase font-black">Monitor Pedidos</p>
+        </a>
+
+        <a routerLink="/carta"
+            class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
+            <div
+                class="w-12 h-12 bg-purple-500/10 text-purple-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <span class="material-symbols-outlined">restaurant_menu</span>
+            </div>
+            <h4 class="font-bold text-white mb-1">Gestión Carta</h4>
+            <p class="text-[10px] text-zinc-500 uppercase font-black">Editar Platos</p>
+        </a>
+
+        <a routerLink="/admin-reservas"
+            class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
+            <div
+                class="w-12 h-12 bg-indigo-500/10 text-indigo-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <span class="material-symbols-outlined">calendar_today</span>
+            </div>
+            <h4 class="font-bold text-white mb-1">Reservas</h4>
+            <p class="text-[10px] text-zinc-500 uppercase font-black">Libro Diario</p>
+        </a>
+
+        <a routerLink="/admin-staff"
+            class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
+            <div
+                class="w-12 h-12 bg-pink-500/10 text-pink-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <span class="material-symbols-outlined">badge</span>
+            </div>
+            <h4 class="font-bold text-white mb-1">Personal</h4>
+            <p class="text-[10px] text-zinc-500 uppercase font-black">Gestión Staff</p>
+        </a>
+
+        <a routerLink="/login"
+            class="bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl hover:bg-red-900/20 transition-all hover:-translate-y-1 group border-dashed">
+            <div
+                class="w-12 h-12 bg-zinc-800 text-zinc-500 rounded-2xl flex items-center justify-center mb-4 group-hover:text-red-500 transition-colors">
+                <span class="material-symbols-outlined">logout</span>
+            </div>
+            <h4 class="font-bold text-zinc-400 mb-1">Cerrar Sesión</h4>
+            <p class="text-[10px] text-zinc-600 uppercase font-black">Salir del Sistema</p>
+        </a>
+
+    </div>
+</div>

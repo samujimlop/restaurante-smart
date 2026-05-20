@@ -1,0 +1,42 @@
+<div class="h-screen bg-[#0c0a09] flex items-center justify-center p-6 font-sans">
+    <div class="w-full max-w-sm">
+
+        <div class="text-center mb-10">
+            <span class="material-symbols-outlined text-yellow-500 text-6xl mb-4">shield_person</span>
+            <h2 class="text-3xl font-black text-white uppercase tracking-tighter">Acceso Staff</h2>
+            <p class="text-zinc-500 text-sm italic">Panel de gestión</p>
+        </div>
+
+        <div class="space-y-6">
+            <div>
+                <label class="text-[10px] font-bold text-zinc-500 uppercase ml-1">Nombre de Usuario</label>
+                <input type="text" [(ngModel)]="userInput" placeholder="Ej: samuel_admin"
+                    class="w-full bg-zinc-900 border border-zinc-800 p-4 rounded-2xl text-white outline-none focus:border-yellow-500 transition-all">
+            </div>
+
+            <div>
+                <label class="text-[10px] font-bold text-zinc-500 uppercase ml-1">PIN de Acceso</label>
+                <input type="password" [(ngModel)]="pinInput" placeholder="****"
+                    class="w-full bg-zinc-900 border border-zinc-800 p-4 rounded-2xl text-yellow-500 text-2xl tracking-[0.5em] text-center outline-none focus:border-yellow-500 transition-all">
+            </div>
+
+            @if (errorMsg) {
+            <div
+                class="bg-red-500/10 border border-red-500/20 p-3 rounded-xl text-red-500 text-xs font-bold text-center">
+                {{ errorMsg }}
+            </div>
+            }
+
+            <button (click)="acceder()"
+                class="w-full bg-yellow-500 text-black py-4 rounded-2xl font-black text-lg shadow-lg hover:bg-yellow-400 active:scale-95 transition-all">
+                ENTRAR AL SISTEMA
+            </button>
+
+            <a routerLink="/"
+                class="block text-center text-zinc-600 text-xs font-bold hover:text-zinc-400 transition-colors pt-4">
+                ← Volver a la Carta Digital
+            </a>
+        </div>
+
+    </div>
+</div>

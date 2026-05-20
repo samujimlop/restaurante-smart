@@ -1,0 +1,150 @@
+<div class="bg-[#0c0a09] min-h-screen text-white p-8 font-sans">
+
+  <div class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-6">
+    <div class="flex items-center gap-5">
+      <a routerLink="/admin"
+        class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-bold text-sm">← Volver</a>
+      <div>
+        <h1 class="text-3xl font-bold text-yellow-500 tracking-tight">Flujo de Caja</h1>
+        <p class="text-zinc-500 text-xs">Historial unificado de TPV y caja manual</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+    <div class="space-y-6">
+      <div class="grid grid-cols-1 gap-4">
+        <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl">
+          <p class="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1">Balance Consolidado</p>
+          <p class="text-4xl font-black" [class.text-white]="balanceTotal >= 0" [class.text-red-500]="balanceTotal < 0">
+            {{ balanceTotal | number:'1.2-2' }}€
+          </p>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-zinc-900/50 border border-zinc-800 p-5 rounded-3xl">
+            <p class="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">Total Ingresos</p>
+            <p class="text-xl font-black text-green-500">+{{ totalIngresos | number:'1.2-2' }}€</p>
+          </div>
+          <div class="bg-zinc-900/50 border border-zinc-800 p-5 rounded-3xl">
+            <p class="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1">Total Gastos</p>
+            <p class="text-xl font-black text-red-500">-{{ totalGastos | number:'1.2-2' }}€</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl shadow-xl">
+        <h3 class="text-lg font-black text-white mb-4">Registrar Movimiento Manual</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Concepto /
+              Proveedor</label>
+            <input type="text" [(ngModel)]="nuevoConcepto" placeholder="Ej. Compra hielo, Factura Frutería..."
+              class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-colors">
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Importe (€)</label>
+              <input type="number" [(ngModel)]="nuevoMonto" placeholder="0.00"
+                class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-colors">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Naturaleza</label>
+              <select [(ngModel)]="nuevoTipo"
+                class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 appearance-none transition-colors cursor-pointer">
+                <option value="Ingreso">Ingreso extra</option>
+                <option value="Gasto">Gasto / Pago</option>
+              </select>
+            </div>
+          </div>
+          <button (click)="registrarOperacion()"
+            class="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black py-4 rounded-xl mt-2 transition-all active:scale-95">
+            REGISTRAR EN CAJA
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="lg:col-span-2 space-y-6">
+
+      <div class="bg-zinc-900 border border-indigo-500/30 rounded-[2rem] p-6 relative overflow-hidden shadow-2xl">
+        <div class="absolute top-0 left-0 w-1 bg-gradient-to-b from-indigo-500 to-purple-600 h-full"></div>
+        <div class="flex justify-between items-center mb-4 pl-2">
+          <div>
+            <h3 class="text-xl font-black text-white flex items-center gap-2">
+              <span class="material-symbols-outlined text-indigo-400">auto_awesome</span>
+              Análisis Inteligente de Caja
+            </h3>
+            <p class="text-xs text-zinc-400 mt-1">Sincronizado con cobros automáticos de comandas</p>
+          </div>
+          <button type="button" (click)="generarAnalisisIA()" [disabled]="cargandoIA"
+            class="bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white px-5 py-3 rounded-xl font-black text-sm transition-all flex items-center gap-2 cursor-pointer">
+            @if (cargandoIA) {
+            <span class="material-symbols-outlined animate-spin text-sm">sync</span> Procesando...
+            } @else {
+            <span class="material-symbols-outlined text-sm">analytics</span> Generar Insight
+            }
+          </button>
+        </div>
+
+        <div class="bg-zinc-950 p-5 rounded-xl border border-zinc-800 min-h-[80px] flex items-center pl-4">
+          @if (cargandoIA) {
+          <div class="w-full space-y-3 animate-pulse">
+            <div class="h-2 bg-indigo-500/20 rounded w-3/4"></div>
+            <div class="h-2 bg-indigo-500/20 rounded w-1/2"></div>
+          </div>
+          } @else if (analisisIA) {
+          <p class="text-sm text-indigo-100 font-medium leading-relaxed">{{ analisisIA }}</p>
+          } @else {
+          <p class="text-sm text-zinc-600 font-bold">Pulsa el botón para analizar de forma conjunta las mesas cobradas y
+            los gastos manuales.</p>
+          }
+        </div>
+      </div>
+
+      <div class="bg-zinc-900 border border-zinc-800 rounded-[2rem] p-6 shadow-xl">
+        <h3 class="text-lg font-black text-white mb-6">Últimas Operaciones Consolidadas</h3>
+
+        <div class="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
+          @for (op of operacionesAnidadas; track op.id) {
+          <div
+            class="bg-zinc-950 border border-zinc-800/50 p-4 rounded-2xl flex justify-between items-center transition-colors hover:border-zinc-700">
+            <div class="flex items-center gap-4">
+              <div class="w-10 h-10 rounded-full flex items-center justify-center"
+                [class.bg-green-500/10]="op.tipo === 'Ingreso' && !op.esComanda"
+                [class.text-green-500]="op.tipo === 'Ingreso' && !op.esComanda" [class.bg-blue-500/10]="op.esComanda"
+                [class.text-blue-400]="op.esComanda" [class.bg-red-500/10]="op.tipo === 'Gasto'"
+                [class.text-red-500]="op.tipo === 'Gasto'">
+                <span class="material-symbols-outlined text-lg">
+                  {{ op.esComanda ? 'receipt_long' : (op.tipo === 'Ingreso' ? 'arrow_downward' : 'arrow_upward') }}
+                </span>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <p class="font-bold text-white text-sm">{{ op.concepto }}</p>
+                  @if (op.esComanda) {
+                  <span
+                    class="text-[9px] bg-blue-500/20 text-blue-300 font-black px-1.5 py-0.5 rounded uppercase tracking-wider">Automático</span>
+                  }
+                </div>
+                <p class="text-xs text-zinc-500 mt-0.5">
+                  {{ op.fecha?.toDate ? (op.fecha.toDate() | date:'dd/MM/yyyy HH:mm') : 'Operación registrada' }}
+                </p>
+              </div>
+            </div>
+            <div class="font-black text-lg" [class.text-green-500]="op.tipo === 'Ingreso' && !op.esComanda"
+              [class.text-blue-400]="op.esComanda" [class.text-red-500]="op.tipo === 'Gasto'">
+              {{ op.tipo === 'Ingreso' ? '+' : '-' }}{{ op.monto | number:'1.2-2' }}€
+            </div>
+          </div>
+          } @empty {
+          <div class="text-center py-10 text-zinc-600 font-bold text-sm">
+            No se registran movimientos ni comandas cerradas en la base de datos.
+          </div>
+          }
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
