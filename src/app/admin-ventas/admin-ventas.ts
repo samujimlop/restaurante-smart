@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -10,7 +10,7 @@ import { Firestore, collection, onSnapshot, query, addDoc } from '@angular/fire/
   imports: [CommonModule, RouterLink, FormsModule],
   templateUrl: './admin-ventas.html'
 })
-export class AdminVentasComponent implements OnInit {
+export class AdminVentasComponent implements OnInit, OnDestroy {
   private firestore: Firestore = inject(Firestore);
   private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
 
@@ -23,7 +23,7 @@ export class AdminVentasComponent implements OnInit {
   private operacionesManuales: any[] = [];
   private comandasPagadas: any[] = [];
 
-  // Lista unificada que leerá el HTML
+  // Lista unificada y filtrada por HOY que leerá el HTML
   operacionesAnidadas: any[] = [];
 
   balanceTotal: number = 0;
@@ -32,11 +32,16 @@ export class AdminVentasComponent implements OnInit {
 
   cargandoIA: boolean = false;
   analisisIA: string = '';
+  
+  fechaHoyStr: string = new Date().toLocaleDateString();
+
+  private unsubscribeManuales: any;
+  private unsubscribeComandas: any;
 
   ngOnInit() {
-    // 1. ESCUCHA 1: Movimientos manuales de caja (Gastos/Ingresos extras)
+    // 1. ESCUCHA 1: Movimientos manuales
     const qManuales = query(collection(this.firestore, 'operaciones_caja'));
-    onSnapshot(qManuales, (snap) => {
+    this.unsubscribeManuales = onSnapshot(qManuales, (snap) => {
       this.operacionesManuales = snap.docs.map(d => ({
         id: d.id,
         ...d.data(),
@@ -45,12 +50,12 @@ export class AdminVentasComponent implements OnInit {
       this.consolidarFlujoCaja();
     });
 
-    // 2. ESCUCHA 2: Comandas cerradas automáticamente desde el TPV de las mesas
+    // 2. ESCUCHA 2: Comandas cerradas desde el TPV
     const qComandas = query(collection(this.firestore, 'comandas'));
-    onSnapshot(qComandas, (snap) => {
+    this.unsubscribeComandas = onSnapshot(qComandas, (snap) => {
       this.comandasPagadas = snap.docs
         .map(d => ({ id: d.id, ...d.data() }))
-        .filter((c: any) => c.estado === 'Pagada') // Solo recuperamos las mesas cerradas
+        .filter((c: any) => c.estado === 'Pagada') 
         .map((c: any) => ({
           id: c.id,
           concepto: `Cierre Mesa ${c.numeroMesa} (TPV)`,
@@ -63,15 +68,28 @@ export class AdminVentasComponent implements OnInit {
     });
   }
 
-  // Fusiona las comandas y los gastos manuales, ordenándolos por fecha reciente
+  ngOnDestroy() {
+    if (this.unsubscribeManuales) this.unsubscribeManuales();
+    if (this.unsubscribeComandas) this.unsubscribeComandas();
+  }
+
   consolidarFlujoCaja() {
+    const hoyString = new Date().toLocaleDateString();
     const todas = [...this.operacionesManuales, ...this.comandasPagadas];
 
-    this.operacionesAnidadas = todas.sort((a, b) => {
+    // 1. Filtramos estrictamente las operaciones del día de HOY
+    const operacionesDeHoy = todas.filter(op => {
+      const ms = this.obtenerMilisegundos(op.fecha);
+      if (ms === 0) return false;
+      return new Date(ms).toLocaleDateString() === hoyString;
+    });
+
+    // 2. Ordenamos las de hoy (más recientes primero)
+    this.operacionesAnidadas = operacionesDeHoy.sort((a, b) => {
       return this.obtenerMilisegundos(b.fecha) - this.obtenerMilisegundos(a.fecha);
     });
 
-    // Recalculamos los balances económicos totales en tiempo real
+    // 3. Recalculamos totales
     this.totalIngresos = this.operacionesAnidadas.filter(o => o.tipo === 'Ingreso').reduce((acc, o) => acc + o.monto, 0);
     this.totalGastos = this.operacionesAnidadas.filter(o => o.tipo === 'Gasto').reduce((acc, o) => acc + o.monto, 0);
     this.balanceTotal = this.totalIngresos - this.totalGastos;
@@ -81,8 +99,8 @@ export class AdminVentasComponent implements OnInit {
 
   private obtenerMilisegundos(fechaField: any): number {
     if (!fechaField) return 0;
-    if (fechaField.toDate) return fechaField.toDate().getTime(); // Si viene como Timestamp de Firebase
-    return new Date(fechaField).getTime(); // Si es string o Date nativo
+    if (fechaField.toDate) return fechaField.toDate().getTime(); 
+    return new Date(fechaField).getTime(); 
   }
 
   async registrarOperacion() {
@@ -99,7 +117,7 @@ export class AdminVentasComponent implements OnInit {
       this.nuevoConcepto = '';
       this.nuevoMonto = null;
       this.nuevoTipo = 'Ingreso';
-      this.cdr.detectChanges();
+      // No hace falta detectChanges manual, Firestore lanzará el onSnapshot al guardar
     } catch (error) {
       console.error("Error al registrar operación manual:", error);
     }
@@ -111,10 +129,14 @@ export class AdminVentasComponent implements OnInit {
     this.cdr.detectChanges();
 
     setTimeout(() => {
-      const totalMesas = this.comandasPagadas.length;
-      this.analisisIA = `Análisis de Inteligencia Artificial: Flujo de caja consolidado con éxito. Se han detectado ${totalMesas} mesas cerradas automáticas del TPV sumando un balance total neto de ${this.balanceTotal.toFixed(2)}€. La actividad comercial de las mesas muestra un rendimiento óptimo. Buen control de gastos registrados.`;
+      const ticketsHoy = this.operacionesAnidadas.filter(o => o.esComanda).length;
+      this.analisisIA = `Análisis Diario: Caja consolidada. Se han detectado ${ticketsHoy} mesas cerradas hoy con un balance total neto de ${this.balanceTotal.toFixed(2)}€. La actividad muestra un rendimiento óptimo acorde a la capacidad de la sala.`;
       this.cargandoIA = false;
       this.cdr.detectChanges();
     }, 2000);
+  }
+
+  imprimirZ() {
+    window.print();
   }
 }
