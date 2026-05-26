@@ -17,7 +17,6 @@ export class AdminMesasComponent implements OnInit {
 
   mesas: any[] = Array.from({ length: 12 }, (_, i) => ({ numero: i + 1, comanda: null }));
 
-  // Variables obligatorias para el sistema de desplegables por categorías
   categoriasMenu: { nombre: string, platos: any[] }[] = [];
   categoriaExpandida: string = '';
 
@@ -25,7 +24,6 @@ export class AdminMesasComponent implements OnInit {
   mostrarModal: boolean = false;
 
   async ngOnInit() {
-    // 1. CARGA DIRECTA A TU COLECCIÓN REAL 'platos' Y AGRUPACIÓN POR CATEGORÍA
     try {
       const productosSnap = await getDocs(collection(this.firestore, 'platos'));
       const platosRaw = productosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -41,7 +39,6 @@ export class AdminMesasComponent implements OnInit {
 
       this.categoriasMenu = Array.from(categoriasMap.entries()).map(([nombre, platos]) => ({ nombre, platos }));
 
-      // Abrimos la primera categoría automáticamente al cargar
       if (this.categoriasMenu.length > 0) {
         this.categoriaExpandida = this.categoriasMenu[0].nombre;
       }
@@ -51,7 +48,6 @@ export class AdminMesasComponent implements OnInit {
       console.error("Fallo crítico al leer platos de Firebase:", e);
     }
 
-    // 2. ESCUCHA EN TIEMPO REAL DE COMANDAS ACTIVAS
     const q = query(collection(this.firestore, 'comandas'));
     onSnapshot(q, (snap) => {
       this.mesas.forEach(m => m.comanda = null);
@@ -68,7 +64,6 @@ export class AdminMesasComponent implements OnInit {
     });
   }
 
-  // Abre o cierra las pestañas de las categorías
   toggleCategoria(categoria: string) {
     this.categoriaExpandida = this.categoriaExpandida === categoria ? '' : categoria;
     this.cdr.detectChanges();
@@ -80,7 +75,7 @@ export class AdminMesasComponent implements OnInit {
     } else {
       this.comandaSeleccionada = {
         numeroMesa: mesa.numero,
-        estado: 'Abierta',
+        estado: 'nuevo', 
         items: [],
         total: 0
       };
@@ -95,10 +90,13 @@ export class AdminMesasComponent implements OnInit {
 
     const precioSeguro = Number(producto.precio || producto.price) || 0;
     const nombreSeguro = producto.nombre || producto.name || 'Sin nombre';
+    const categoriaSegura = producto.categoria || producto.category || 'Otros';
 
     this.comandaSeleccionada.items.push({
       name: nombreSeguro,
-      price: precioSeguro
+      price: precioSeguro,
+      estado: 'nuevo',
+      categoria: categoriaSegura
     });
 
     this.comandaSeleccionada.total = this.comandaSeleccionada.items.reduce((acc: number, item: any) => acc + item.price, 0);
@@ -130,6 +128,7 @@ export class AdminMesasComponent implements OnInit {
     if (!this.comandaSeleccionada || this.comandaSeleccionada.id) return;
     try {
       this.comandaSeleccionada.fechaCreacion = new Date();
+      this.comandaSeleccionada.fecha = new Date().toISOString(); 
       const docRef = await addDoc(collection(this.firestore, 'comandas'), this.comandaSeleccionada);
       this.comandaSeleccionada.id = docRef.id;
       this.cerrarModal();
@@ -148,6 +147,25 @@ export class AdminMesasComponent implements OnInit {
 
   async aprobarPagoTarjeta() {
     if (!this.comandaSeleccionada || !this.comandaSeleccionada.id) return;
+    
+    if (this.comandaSeleccionada.estado?.toLowerCase() !== 'entregado') {
+      const platosPendientes = this.comandaSeleccionada.items?.filter((item: any) => {
+        const cat = item.categoria ? item.categoria.toLowerCase().trim() : '';
+        if (cat === 'bebidas' || cat === 'bebida' || cat === 'refrescos') return false; 
+        
+        const nom = item.name ? item.name.toLowerCase() : '';
+        if (nom.includes('refresco') || nom.includes('agua') || nom.includes('cerveza') || nom.includes('vino') || nom.includes('café')) return false;
+
+        return item.estado !== 'listo'; 
+      }) || [];
+
+      if (platosPendientes.length > 0) {
+        const nombresFaltantes = Array.from(new Set(platosPendientes.map((p: any) => p.name))).join(', ');
+        alert(`⛔ No se puede cobrar por tarjeta. Faltan platos por terminar en cocina: [ ${nombresFaltantes} ]`);
+        return; 
+      }
+    }
+
     try {
       await updateDoc(doc(this.firestore, `comandas/${this.comandaSeleccionada.id}`), {
         estado: 'Aprobada_Para_Pago'
@@ -161,6 +179,25 @@ export class AdminMesasComponent implements OnInit {
 
   async cobrarEnEfectivo() {
     if (!this.comandaSeleccionada || !this.comandaSeleccionada.id) return;
+
+    if (this.comandaSeleccionada.estado?.toLowerCase() !== 'entregado') {
+      const platosPendientes = this.comandaSeleccionada.items?.filter((item: any) => {
+        const cat = item.categoria ? item.categoria.toLowerCase().trim() : '';
+        if (cat === 'bebidas' || cat === 'bebida' || cat === 'refrescos') return false; 
+        
+        const nom = item.name ? item.name.toLowerCase() : '';
+        if (nom.includes('refresco') || nom.includes('agua') || nom.includes('cerveza') || nom.includes('vino') || nom.includes('café')) return false;
+
+        return item.estado !== 'listo'; 
+      }) || [];
+
+      if (platosPendientes.length > 0) {
+        const nombresFaltantes = Array.from(new Set(platosPendientes.map((p: any) => p.name))).join(', ');
+        alert(`⛔ No se puede cobrar en efectivo. Faltan platos por terminar en cocina: [ ${nombresFaltantes} ]`);
+        return; 
+      }
+    }
+
     try {
       await updateDoc(doc(this.firestore, `comandas/${this.comandaSeleccionada.id}`), {
         estado: 'Pagada',

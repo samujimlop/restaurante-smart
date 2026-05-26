@@ -3,27 +3,26 @@
     <div class="flex justify-between items-center mb-10 border-b border-zinc-800 pb-8">
         <div>
             <h1 class="text-4xl font-black text-yellow-500 tracking-tighter">Panel de Control</h1>
-            <p class="text-zinc-500 text-sm mt-1">Gestión integral de <strong class="text-zinc-300">Tapeando</strong>
-            </p>
+            <p class="text-zinc-500 text-sm mt-1">Gestión integral de <strong class="text-zinc-300">Tapeando</strong></p>
         </div>
-        <div
-            class="flex items-center gap-3 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-full text-xs text-zinc-400">
+        <div class="flex items-center gap-3 px-4 py-2 bg-zinc-900 border border-zinc-800 rounded-full text-xs text-zinc-400">
             <span class="relative flex h-2 w-2">
-                <span
-                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
             Sincronizado con Firebase
         </div>
     </div>
 
+    @if (esAdmin || esStaff) {
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-        <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden group">
+        
+        <a routerLink="/mis-mesas" class="block bg-zinc-900 border border-zinc-800 p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden group cursor-pointer hover:bg-zinc-800 transition-all hover:-translate-y-1">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <span class="material-symbols-outlined text-8xl">table_restaurant</span>
             </div>
             <p class="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-2">Mesas Ocupadas</p>
-            <p class="text-6xl font-black text-white">
+            <p class="text-6xl font-black text-white group-hover:text-yellow-500 transition-colors">
                 {{ mesasOcupadas }} <span class="text-2xl text-zinc-700">/ {{ totalMesas }}</span>
             </p>
             <div class="mt-6">
@@ -38,101 +37,132 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </a>
 
-        <div class="bg-zinc-900 border border-zinc-800 p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden group">
+        <a routerLink="/mis-mesas" class="block bg-zinc-900 border border-zinc-800 p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden group cursor-pointer hover:bg-zinc-800 transition-all hover:-translate-y-1">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <span class="material-symbols-outlined text-8xl">receipt_long</span>
             </div>
             <p class="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-2">Tickets en Curso</p>
-            <p class="text-6xl font-black text-white">{{ mesasOcupadas }}</p>
+            <p class="text-6xl font-black text-white group-hover:text-yellow-500 transition-colors">{{ mesasOcupadas }}</p>
             <p class="text-zinc-500 text-sm mt-4 italic">Monitorizando pedidos desde el TPV...</p>
-        </div>
+        </a>
     </div>
+    }
 
     <h3 class="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-6 ml-2">Menús de Gestión</h3>
 
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
 
-        <a routerLink="/mis-mesas"
-            class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
-            <div
-                class="w-12 h-12 bg-yellow-500/10 text-yellow-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <span class="material-symbols-outlined">grid_view</span>
+        @if (esAdmin || esStaff) {
+        <a routerLink="/mis-mesas" class="relative overflow-hidden block bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
+            <div class="absolute -bottom-4 -right-4 text-yellow-500 opacity-5 group-hover:opacity-20 transition-all duration-300 group-hover:scale-110 group-hover:-rotate-6">
+                <span class="material-symbols-outlined text-8xl">grid_view</span>
             </div>
-            <h4 class="font-bold text-white mb-1">Monitor Mesas</h4>
-            <p class="text-[10px] text-zinc-500 uppercase font-black">Acceso TPV</p>
+            <div class="relative z-10">
+                <div class="w-12 h-12 bg-yellow-500/10 text-yellow-500 rounded-2xl flex items-center justify-center mb-4">
+                    <span class="material-symbols-outlined">grid_view</span>
+                </div>
+                <h4 class="font-bold text-white mb-1">Monitor Mesas</h4>
+                <p class="text-[10px] text-zinc-500 uppercase font-black">Acceso TPV</p>
+            </div>
+        </a>
+        }
+
+        @if (esAdmin || esStaff || esCocinero) {
+        <a routerLink="/monitor-cocina" class="relative overflow-hidden block bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
+            <div class="absolute -bottom-4 -right-4 text-orange-500 opacity-5 group-hover:opacity-20 transition-all duration-300 group-hover:scale-110 group-hover:-rotate-6">
+                <span class="material-symbols-outlined text-8xl">skillet</span>
+            </div>
+            <div class="relative z-10">
+                <div class="w-12 h-12 bg-orange-500/10 text-orange-500 rounded-2xl flex items-center justify-center mb-4">
+                    <span class="material-symbols-outlined">skillet</span>
+                </div>
+                <h4 class="font-bold text-white mb-1">Cocina</h4>
+                <p class="text-[10px] text-zinc-500 uppercase font-black">Monitor Pedidos</p>
+            </div>
+        </a>
+        }
+
+        @if (esAdmin) {
+        <a routerLink="/inventory" class="relative overflow-hidden block bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
+            <div class="absolute -bottom-4 -right-4 text-blue-500 opacity-5 group-hover:opacity-20 transition-all duration-300 group-hover:scale-110 group-hover:-rotate-6">
+                <span class="material-symbols-outlined text-8xl">inventory_2</span>
+            </div>
+            <div class="relative z-10">
+                <div class="w-12 h-12 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center mb-4">
+                    <span class="material-symbols-outlined">inventory_2</span>
+                </div>
+                <h4 class="font-bold text-white mb-1">Inventario</h4>
+                <p class="text-[10px] text-zinc-500 uppercase font-black">Smart Stock</p>
+            </div>
         </a>
 
-        <a routerLink="/inventory"
-            class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
-            <div
-                class="w-12 h-12 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <span class="material-symbols-outlined">inventory_2</span>
+        <a routerLink="/admin-ventas" class="relative overflow-hidden block bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
+            <div class="absolute -bottom-4 -right-4 text-emerald-500 opacity-5 group-hover:opacity-20 transition-all duration-300 group-hover:scale-110 group-hover:-rotate-6">
+                <span class="material-symbols-outlined text-8xl">payments</span>
             </div>
-            <h4 class="font-bold text-white mb-1">Inventario</h4>
-            <p class="text-[10px] text-zinc-500 uppercase font-black">Smart Stock</p>
+            <div class="relative z-10">
+                <div class="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mb-4">
+                    <span class="material-symbols-outlined">payments</span>
+                </div>
+                <h4 class="font-bold text-white mb-1">Flujo de Caja</h4>
+                <p class="text-[10px] text-zinc-500 uppercase font-black">Contabilidad</p>
+            </div>
         </a>
 
-        <a routerLink="/admin-ventas"
-            class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
-            <div
-                class="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <span class="material-symbols-outlined">payments</span>
+        <a routerLink="/carta" class="relative overflow-hidden block bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
+            <div class="absolute -bottom-4 -right-4 text-purple-500 opacity-5 group-hover:opacity-20 transition-all duration-300 group-hover:scale-110 group-hover:-rotate-6">
+                <span class="material-symbols-outlined text-8xl">restaurant_menu</span>
             </div>
-            <h4 class="font-bold text-white mb-1">Flujo de Caja</h4>
-            <p class="text-[10px] text-zinc-500 uppercase font-black">Contabilidad</p>
+            <div class="relative z-10">
+                <div class="w-12 h-12 bg-purple-500/10 text-purple-500 rounded-2xl flex items-center justify-center mb-4">
+                    <span class="material-symbols-outlined">restaurant_menu</span>
+                </div>
+                <h4 class="font-bold text-white mb-1">Gestión Carta</h4>
+                <p class="text-[10px] text-zinc-500 uppercase font-black">Editar Platos</p>
+            </div>
         </a>
 
-        <a routerLink="/monitor-cocina"
-            class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
-            <div
-                class="w-12 h-12 bg-orange-500/10 text-orange-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <span class="material-symbols-outlined">skillet</span>
+        <a routerLink="/admin-reservas" class="relative overflow-hidden block bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
+            <div class="absolute -bottom-4 -right-4 text-indigo-500 opacity-5 group-hover:opacity-20 transition-all duration-300 group-hover:scale-110 group-hover:-rotate-6">
+                <span class="material-symbols-outlined text-8xl">calendar_today</span>
             </div>
-            <h4 class="font-bold text-white mb-1">Cocina</h4>
-            <p class="text-[10px] text-zinc-500 uppercase font-black">Monitor Pedidos</p>
+            <div class="relative z-10">
+                <div class="w-12 h-12 bg-indigo-500/10 text-indigo-500 rounded-2xl flex items-center justify-center mb-4">
+                    <span class="material-symbols-outlined">calendar_today</span>
+                </div>
+                <h4 class="font-bold text-white mb-1">Reservas</h4>
+                <p class="text-[10px] text-zinc-500 uppercase font-black">Libro Diario</p>
+            </div>
         </a>
 
-        <a routerLink="/carta"
-            class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
-            <div
-                class="w-12 h-12 bg-purple-500/10 text-purple-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <span class="material-symbols-outlined">restaurant_menu</span>
+        <a routerLink="/admin-staff" class="relative overflow-hidden block bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
+            <div class="absolute -bottom-4 -right-4 text-pink-500 opacity-5 group-hover:opacity-20 transition-all duration-300 group-hover:scale-110 group-hover:-rotate-6">
+                <span class="material-symbols-outlined text-8xl">badge</span>
             </div>
-            <h4 class="font-bold text-white mb-1">Gestión Carta</h4>
-            <p class="text-[10px] text-zinc-500 uppercase font-black">Editar Platos</p>
+            <div class="relative z-10">
+                <div class="w-12 h-12 bg-pink-500/10 text-pink-500 rounded-2xl flex items-center justify-center mb-4">
+                    <span class="material-symbols-outlined">badge</span>
+                </div>
+                <h4 class="font-bold text-white mb-1">Personal</h4>
+                <p class="text-[10px] text-zinc-500 uppercase font-black">Gestión Staff</p>
+            </div>
         </a>
+        }
 
-        <a routerLink="/admin-reservas"
-            class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
-            <div
-                class="w-12 h-12 bg-indigo-500/10 text-indigo-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <span class="material-symbols-outlined">calendar_today</span>
+        <button (click)="cerrarSesion()" class="relative overflow-hidden w-full text-left bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl hover:bg-red-900/20 transition-all hover:-translate-y-1 group border-dashed">
+            <div class="absolute -bottom-4 -right-4 text-red-500 opacity-5 group-hover:opacity-20 transition-all duration-300 group-hover:scale-110 group-hover:-rotate-6">
+                <span class="material-symbols-outlined text-8xl">logout</span>
             </div>
-            <h4 class="font-bold text-white mb-1">Reservas</h4>
-            <p class="text-[10px] text-zinc-500 uppercase font-black">Libro Diario</p>
-        </a>
-
-        <a routerLink="/admin-staff"
-            class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
-            <div
-                class="w-12 h-12 bg-pink-500/10 text-pink-500 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <span class="material-symbols-outlined">badge</span>
+            <div class="relative z-10">
+                <div class="w-12 h-12 bg-zinc-800 text-zinc-500 rounded-2xl flex items-center justify-center mb-4 group-hover:text-red-500 transition-colors">
+                    <span class="material-symbols-outlined">logout</span>
+                </div>
+                <h4 class="font-bold text-zinc-400 mb-1 group-hover:text-red-400 transition-colors">Cerrar Sesión</h4>
+                <p class="text-[10px] text-zinc-600 uppercase font-black">Salir del Sistema</p>
             </div>
-            <h4 class="font-bold text-white mb-1">Personal</h4>
-            <p class="text-[10px] text-zinc-500 uppercase font-black">Gestión Staff</p>
-        </a>
-
-        <a routerLink="/login"
-            class="bg-zinc-900/50 border border-zinc-800 p-6 rounded-3xl hover:bg-red-900/20 transition-all hover:-translate-y-1 group border-dashed">
-            <div
-                class="w-12 h-12 bg-zinc-800 text-zinc-500 rounded-2xl flex items-center justify-center mb-4 group-hover:text-red-500 transition-colors">
-                <span class="material-symbols-outlined">logout</span>
-            </div>
-            <h4 class="font-bold text-zinc-400 mb-1">Cerrar Sesión</h4>
-            <p class="text-[10px] text-zinc-600 uppercase font-black">Salir del Sistema</p>
-        </a>
+        </button>
 
     </div>
 </div>

@@ -1,116 +1,140 @@
-<div class="bg-[#0c0a09] min-h-screen text-white p-6 font-sans flex flex-col h-screen overflow-hidden">
-
-  <div class="flex justify-between items-center mb-6 pb-4 border-b border-zinc-800 shrink-0">
-    <div class="flex items-center gap-4">
-      <a routerLink="/admin" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 p-3 rounded-xl transition-colors cursor-pointer">
-        <span class="material-symbols-outlined">home</span>
-      </a>
-      <div>
-        <h1 class="text-3xl font-black text-orange-500 uppercase tracking-tighter flex items-center gap-2">
-          <span class="material-symbols-outlined text-4xl">local_fire_department</span> KDS Cocina
-        </h1>
-      </div>
-    </div>
-
-    <button (click)="generarAnalisisIA()" [disabled]="pensandoIA"
-      class="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-black tracking-widest uppercase flex items-center gap-2 shadow-[0_0_20px_rgba(147,51,234,0.3)] transition-all active:scale-95 disabled:opacity-50">
-      <span class="material-symbols-outlined" [class.animate-spin]="pensandoIA">smart_toy</span>
-      {{ pensandoIA ? 'ANALIZANDO SALA...' : 'IA: OPTIMIZAR LOTE' }}
-    </button>
-  </div>
-
-  @if (analisisIA) {
-    <div class="bg-purple-900/20 border border-purple-500/30 p-6 rounded-2xl mb-6 flex gap-4 items-start shrink-0 animate-fade-in">
-      <div class="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center text-purple-400 shrink-0">
-        <span class="material-symbols-outlined text-3xl">psychology</span>
-      </div>
-      <div>
-        <h3 class="text-purple-400 font-black uppercase tracking-widest text-xs mb-2">Asistente de Cocina IA</h3>
-        <p class="text-white font-medium whitespace-pre-line leading-relaxed">{{ analisisIA }}</p>
-      </div>
-      <button (click)="analisisIA = null" class="ml-auto text-zinc-500 hover:text-white"><span class="material-symbols-outlined">close</span></button>
-    </div>
-  }
-
-  <div class="flex-1 grid grid-cols-3 gap-6 overflow-hidden">
+<div class="bg-[#0c0a09] min-h-screen text-white font-sans p-6 flex flex-col h-screen">
     
-    <div class="bg-zinc-900/50 border border-zinc-800 rounded-[2rem] flex flex-col overflow-hidden">
-      <div class="bg-red-500/10 border-b border-red-500/20 p-4 flex justify-between items-center">
-        <h2 class="text-red-500 font-black uppercase tracking-widest flex items-center gap-2"><span class="material-symbols-outlined">receipt_long</span> Nuevos Pedidos</h2>
-        <span class="bg-red-500 text-black font-black w-8 h-8 rounded-full flex items-center justify-center">{{ comandasPendientes.length }}</span>
-      </div>
-      <div class="flex-1 p-4 overflow-y-auto space-y-4">
-        @for (ticket of comandasPendientes; track ticket.id) {
-          <div class="bg-zinc-800 border border-zinc-700 p-5 rounded-2xl shadow-lg relative">
-            <div class="flex justify-between items-center mb-4 pb-3 border-b border-zinc-700/50">
-              <span class="text-2xl font-black text-white">Mesa {{ ticket.numeroMesa }}</span>
-              <span class="text-xs text-zinc-400 font-bold bg-zinc-900 px-2 py-1 rounded-md">{{ ticket.items?.length || 0 }} Platos</span>
+    <div class="flex justify-between items-center mb-6 border-b border-zinc-800 pb-4 shrink-0">
+        <div class="flex items-center gap-6">
+            <a routerLink="/admin" class="bg-zinc-800 hover:bg-zinc-700 text-white p-3 rounded-xl transition-colors flex items-center justify-center">
+                <span class="material-symbols-outlined">arrow_back</span>
+            </a>
+            <div>
+                <h1 class="text-3xl font-black text-orange-500 tracking-tight uppercase">Monitor de Cocina</h1>
+                <p class="text-zinc-500 text-sm font-bold mt-1">Conexión en Tiempo Real Activa</p>
             </div>
-            <ul class="space-y-2 mb-6">
-              @for (item of ticket.items; track $index) {
-                <li class="font-bold text-zinc-300 flex items-start gap-2">
-                  <span class="text-red-500 mt-0.5">•</span> {{ item.name }}
-                </li>
-              }
-            </ul>
-            <button (click)="cambiarEstadoCocina(ticket.id, 'Preparando')" class="w-full bg-orange-600 hover:bg-orange-500 text-white py-3 rounded-xl font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors">
-              <span class="material-symbols-outlined">local_fire_department</span> Marchar Fuego
-            </button>
-          </div>
-        }
-      </div>
+        </div>
+        <button class="bg-purple-600/20 text-purple-400 border border-purple-500/30 px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-purple-600/40 transition-colors">
+            <span class="material-symbols-outlined">auto_awesome</span>
+            IA: Optimizar Lote
+        </button>
     </div>
 
-    <div class="bg-zinc-900/50 border border-zinc-800 rounded-[2rem] flex flex-col overflow-hidden">
-      <div class="bg-orange-500/10 border-b border-orange-500/20 p-4 flex justify-between items-center">
-        <h2 class="text-orange-500 font-black uppercase tracking-widest flex items-center gap-2"><span class="material-symbols-outlined">skillet</span> En Preparación</h2>
-        <span class="bg-orange-500 text-black font-black w-8 h-8 rounded-full flex items-center justify-center">{{ comandasPreparando.length }}</span>
-      </div>
-      <div class="flex-1 p-4 overflow-y-auto space-y-4">
-        @for (ticket of comandasPreparando; track ticket.id) {
-          <div class="bg-zinc-800 border border-orange-500/30 p-5 rounded-2xl shadow-[0_0_15px_rgba(249,115,22,0.1)] relative">
-            <div class="flex justify-between items-center mb-4 pb-3 border-b border-zinc-700/50">
-              <span class="text-2xl font-black text-white">Mesa {{ ticket.numeroMesa }}</span>
-              <span class="flex h-3 w-3 relative">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
-              </span>
-            </div>
-            <ul class="space-y-2 mb-6">
-              @for (item of ticket.items; track $index) {
-                <li class="font-bold text-zinc-300 flex items-start gap-2">
-                  <span class="text-orange-500 mt-0.5">•</span> {{ item.name }}
-                </li>
-              }
-            </ul>
-            <button (click)="cambiarEstadoCocina(ticket.id, 'Listo')" class="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-xl font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors">
-              <span class="material-symbols-outlined">room_service</span> Listo / Pase
-            </button>
-          </div>
-        }
-      </div>
-    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
+        
+        <div class="bg-zinc-900/50 border border-zinc-800 rounded-[2rem] p-4 flex flex-col h-full overflow-hidden">
+            <h2 class="text-xl font-black text-white mb-4 px-2 uppercase tracking-widest border-l-4 border-red-500 pl-4 shrink-0">Nuevos Pedidos</h2>
+            
+            <div class="flex-1 overflow-y-auto min-h-0 space-y-4 pr-2 pb-4 scrollbar-thin">
+                @for (comanda of comandasNuevas; track comanda.id) {
+                <div class="bg-zinc-800 border border-zinc-700 p-5 rounded-2xl shadow-xl flex flex-col">
+                    <div class="flex justify-between items-center mb-4 border-b border-zinc-700 pb-3">
+                        <span class="text-2xl font-black text-white">Mesa {{ comanda.numeroMesa }}</span>
+                        <span class="text-sm font-bold text-red-400 animate-pulse bg-red-500/10 px-3 py-1 rounded-md">URGENTE</span>
+                    </div>
+                    
+                    <div class="space-y-2 mb-6">
+                        @for (item of comanda.itemsAgrupados; track $index) {
+                        <button (click)="tacharPlato(comanda, item.name, item.listos === item.cantidad)" 
+                                class="w-full flex items-center text-left gap-4 p-3 rounded-xl transition-all border border-transparent hover:border-zinc-600"
+                                [class.bg-zinc-900]="item.listos < item.cantidad"
+                                [class.bg-zinc-950]="item.listos === item.cantidad"
+                                [class.opacity-50]="item.listos === item.cantidad">
+                            
+                            <span class="font-black text-xl min-w-[2.5rem] h-10 flex items-center justify-center rounded-lg transition-colors"
+                                  [class.bg-orange-500]="item.listos < item.cantidad"
+                                  [class.text-black]="item.listos < item.cantidad"
+                                  [class.bg-zinc-800]="item.listos === item.cantidad"
+                                  [class.text-zinc-500]="item.listos === item.cantidad">
+                                {{ item.cantidad }}
+                            </span>
+                            <span class="font-bold text-xl tracking-tight uppercase leading-none transition-all"
+                                  [class.text-zinc-100]="item.listos < item.cantidad"
+                                  [class.text-zinc-600]="item.listos === item.cantidad"
+                                  [class.line-through]="item.listos === item.cantidad">
+                                {{ item.name }}
+                            </span>
+                        </button>
+                        }
+                    </div>
 
-    <div class="bg-zinc-900/50 border border-zinc-800 rounded-[2rem] flex flex-col overflow-hidden">
-      <div class="bg-green-500/10 border-b border-green-500/20 p-4 flex justify-between items-center">
-        <h2 class="text-green-500 font-black uppercase tracking-widest flex items-center gap-2"><span class="material-symbols-outlined">done_all</span> En el Pase</h2>
-        <span class="bg-green-500 text-black font-black w-8 h-8 rounded-full flex items-center justify-center">{{ comandasListas.length }}</span>
-      </div>
-      <div class="flex-1 p-4 overflow-y-auto space-y-4">
-        @for (ticket of comandasListas; track ticket.id) {
-          <div class="bg-zinc-800 border border-green-500/30 p-5 rounded-2xl relative opacity-70 hover:opacity-100 transition-opacity">
-            <div class="flex justify-between items-center mb-4 pb-3 border-b border-zinc-700/50">
-              <span class="text-2xl font-black text-white">Mesa {{ ticket.numeroMesa }}</span>
-              <span class="material-symbols-outlined text-green-500">check_circle</span>
+                    <button (click)="cambiarEstado(comanda.id, 'preparando')" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-black text-lg py-5 rounded-xl transition-colors shadow-lg uppercase tracking-widest active:scale-95 mt-auto">
+                        A Fuegos
+                    </button>
+                </div>
+                }
             </div>
-            <p class="text-sm font-bold text-zinc-400 mb-4">A la espera de que sala se lo lleve.</p>
-            <button (click)="cambiarEstadoCocina(ticket.id, 'Preparando')" class="w-full bg-zinc-700 hover:bg-zinc-600 text-zinc-300 py-2 rounded-xl text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors">
-              <span class="material-symbols-outlined text-[16px]">undo</span> Devolver a fuegos
-            </button>
-          </div>
-        }
-      </div>
-    </div>
+        </div>
 
-  </div>
+        <div class="bg-zinc-900/50 border border-zinc-800 rounded-[2rem] p-4 flex flex-col h-full overflow-hidden">
+            <h2 class="text-xl font-black text-white mb-4 px-2 uppercase tracking-widest border-l-4 border-orange-500 pl-4 shrink-0">En Fuegos</h2>
+            <div class="flex-1 overflow-y-auto min-h-0 space-y-4 pr-2 pb-4 scrollbar-thin">
+                @for (comanda of comandasFuegos; track comanda.id) {
+                <div class="bg-zinc-800 border border-orange-900/50 p-5 rounded-2xl shadow-xl flex flex-col relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                        <span class="material-symbols-outlined text-8xl">skillet</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-4 border-b border-zinc-700 pb-3 relative z-10">
+                        <span class="text-2xl font-black text-orange-400">Mesa {{ comanda.numeroMesa }}</span>
+                    </div>
+                    
+                    <div class="space-y-2 mb-6 flex-1 relative z-10">
+                        @for (item of comanda.itemsAgrupados; track $index) {
+                        <button (click)="tacharPlato(comanda, item.name, item.listos === item.cantidad)" 
+                                class="w-full flex items-center text-left gap-4 p-3 rounded-xl transition-all border border-zinc-800 hover:border-zinc-600"
+                                [class.bg-zinc-900]="item.listos < item.cantidad"
+                                [class.bg-zinc-950]="item.listos === item.cantidad"
+                                [class.opacity-40]="item.listos === item.cantidad">
+                            <span class="font-black text-xl min-w-[2.5rem] text-center"
+                                  [class.text-orange-500]="item.listos < item.cantidad"
+                                  [class.text-zinc-600]="item.listos === item.cantidad">
+                                {{ item.cantidad }}x
+                            </span>
+                            <span class="font-bold text-lg uppercase leading-none transition-all"
+                                  [class.text-zinc-300]="item.listos < item.cantidad"
+                                  [class.text-zinc-600]="item.listos === item.cantidad"
+                                  [class.line-through]="item.listos === item.cantidad">
+                                {{ item.name }}
+                            </span>
+                        </button>
+                        }
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 relative z-10 mt-auto">
+                        <button (click)="cambiarEstado(comanda.id, 'recibido')" class="bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-4 rounded-xl transition-colors uppercase text-sm">
+                            Devolver
+                        </button>
+                        <button (click)="cambiarEstado(comanda.id, 'listo')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl transition-colors shadow-lg uppercase text-sm active:scale-95">
+                            Al Pase
+                        </button>
+                    </div>
+                </div>
+                }
+            </div>
+        </div>
+
+        <div class="bg-zinc-900/50 border border-zinc-800 rounded-[2rem] p-4 flex flex-col h-full overflow-hidden">
+            <h2 class="text-xl font-black text-white mb-4 px-2 uppercase tracking-widest border-l-4 border-emerald-500 pl-4 shrink-0">Para Entregar</h2>
+            <div class="flex-1 overflow-y-auto min-h-0 space-y-4 pr-2 pb-4 scrollbar-thin">
+                @for (comanda of comandasPase; track comanda.id) {
+                <div class="bg-emerald-950/30 border border-emerald-900/50 p-5 rounded-2xl shadow-xl flex flex-col">
+                    <div class="flex justify-between items-center mb-4 border-b border-emerald-900/50 pb-3">
+                        <span class="text-2xl font-black text-emerald-400">Mesa {{ comanda.numeroMesa }}</span>
+                        <span class="material-symbols-outlined text-emerald-500">done_all</span>
+                    </div>
+                    
+                    <div class="space-y-1 mb-6 flex-1">
+                        @for (item of comanda.itemsAgrupados; track $index) {
+                        <div class="flex items-center gap-2 text-emerald-200/60 p-1 line-through">
+                            <span class="font-bold">{{ item.cantidad }}x</span>
+                            <span class="text-sm uppercase">{{ item.name }}</span>
+                        </div>
+                        }
+                    </div>
+
+                    <button (click)="cambiarEstado(comanda.id, 'entregado')" class="w-full bg-zinc-800 hover:bg-emerald-900/50 text-emerald-500 border border-emerald-900/50 font-black text-sm py-4 rounded-xl transition-colors uppercase tracking-widest mt-auto">
+                        Marcar Servido
+                    </button>
+                </div>
+                }
+            </div>
+        </div>
+
+    </div>
 </div>
