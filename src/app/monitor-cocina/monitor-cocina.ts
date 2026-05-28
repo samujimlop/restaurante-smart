@@ -22,15 +22,13 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
     const q = query(collection(this.firestore, 'comandas'));
 
     this.unsubscribe = onSnapshot(q, (snapshot) => {
-      const hoy = new Date().toLocaleDateString();
-
       const todasBruto = snapshot.docs.map(d => {
         const data = d.data();
         const agrupados = new Map<string, any>();
         const itemsCrudos = data['items'] || [];
 
         itemsCrudos.forEach((item: any) => {
-          // FILTRO BEBIDAS
+          // FILTRO BEBIDAS: La cocina ignora lo que va a la barra
           const cat = item.categoria ? item.categoria.toLowerCase().trim() : '';
           if (cat === 'bebidas' || cat === 'bebida' || cat === 'refrescos') {
             return; 
@@ -53,38 +51,30 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
 
         const itemsParaCocina = Array.from(agrupados.values());
 
+        // Si la comanda solo tenía bebidas, la cocina no tiene que verla
         if (itemsParaCocina.length === 0) {
           return null; 
         }
 
-        let fechaComanda = '';
-        if (data['fecha']) {
-          fechaComanda = typeof data['fecha'].toDate === 'function' 
-            ? data['fecha'].toDate().toLocaleDateString() 
-            : new Date(data['fecha']).toLocaleDateString();
-        }
-
-        // El "as any" le dice a TS que confíe en los datos de Firebase
         return {
           id: d.id,
           itemsOriginales: itemsCrudos,
-          fechaFormateada: fechaComanda,
           ...data,
           itemsAgrupados: itemsParaCocina
         } as any; 
       });
 
+      // Limpiamos los nulls (mesas que solo han pedido bebida)
       const todas = todasBruto.filter(c => c !== null);
 
-      // Añadimos ": any" en las variables para que el compilador no se queje
+      // Clasificación estricta por estado, sin importar la fecha en la que se abrieron
       this.comandasFuegos = todas.filter((c: any) => c.estado?.toLowerCase().trim() === 'preparando');
       this.comandasPase = todas.filter((c: any) => c.estado?.toLowerCase().trim() === 'listo');
 
       this.comandasNuevas = todas.filter((c: any) => {
-        const est = c.estado ? c.estado.toLowerCase().trim() : '';
-        if (est !== 'recibido' && est !== 'nuevo') return false;
-        if (c.fechaFormateada && c.fechaFormateada !== hoy) return false;
-        return true;
+        const est = c.estado ? c.estado.toLowerCase().trim() : 'pendiente';
+        // Se aceptan todas las variaciones de inicio de comanda
+        return est === 'pendiente' || est === 'recibido' || est === 'nuevo';
       });
 
       this.cdr.detectChanges(); 

@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router'; // Añadimos Router para redireccionar al salir
+import { Router, RouterLink } from '@angular/router'; 
 import { Firestore, collection, onSnapshot, query } from '@angular/fire/firestore';
 
 @Component({
@@ -18,6 +18,9 @@ export class DashboardOverviewComponent implements OnInit {
     totalMesas: number = 12;
     mesasOcupadas: number = 0;
     porcentajeOcupacion: number = 0;
+    
+    // NUEVO: Contador de alertas de inventario
+    alertasInventario: number = 0;
 
     // Variables de Roles
     esAdmin: boolean = false;
@@ -40,19 +43,37 @@ export class DashboardOverviewComponent implements OnInit {
             }
         }
 
-        // 2. ESCUCHA DE FIREBASE EN TIEMPO REAL (Tus estadísticas)
-        const q = query(collection(this.firestore, 'comandas'));
-
-        onSnapshot(q, (snap) => {
+        // 2. ESCUCHA DE FIREBASE: COMANDAS (Mesas ocupadas)
+        const qComandas = query(collection(this.firestore, 'comandas'));
+        onSnapshot(qComandas, (snap) => {
             const activas = snap.docs
                 .map(d => d.data())
                 .filter((c: any) => c.estado !== 'Pagada');
 
             this.mesasOcupadas = activas.length;
             this.porcentajeOcupacion = (this.mesasOcupadas / this.totalMesas) * 100;
-
             this.cdr.detectChanges();
         });
+
+        // 3. ESCUCHA DE FIREBASE: INVENTARIO (Stock crítico)
+        // Solo lanzamos esta consulta si el usuario es Admin (ahorro de lecturas)
+        if (this.esAdmin) {
+            const qInventario = query(collection(this.firestore, 'inventario'));
+            onSnapshot(qInventario, (snap) => {
+                let criticos = 0;
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    const stock = data['stock'] || 0;
+                    const target = data['target'] || 100;
+                    // Comprobamos si está por debajo del 20%
+                    if (stock < (target * 0.2)) {
+                        criticos++;
+                    }
+                });
+                this.alertasInventario = criticos;
+                this.cdr.detectChanges();
+            });
+        }
     }
 
     // Función para vaciar la sesión y volver al login

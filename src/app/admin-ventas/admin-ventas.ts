@@ -14,6 +14,9 @@ export class AdminVentasComponent implements OnInit, OnDestroy {
   private firestore: Firestore = inject(Firestore);
   private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
 
+  // Control de interfaz
+  modoVista: 'hoy' | 'historial' = 'hoy';
+
   // Formulario manual
   nuevoConcepto: string = '';
   nuevoMonto: number | null = null;
@@ -23,12 +26,14 @@ export class AdminVentasComponent implements OnInit, OnDestroy {
   private operacionesManuales: any[] = [];
   private comandasPagadas: any[] = [];
 
-  // Lista unificada y filtrada por HOY que leerá el HTML
+  // Datos para la vista de HOY
   operacionesAnidadas: any[] = [];
-
   balanceTotal: number = 0;
   totalIngresos: number = 0;
   totalGastos: number = 0;
+
+  // Datos para la vista de HISTORIAL
+  historialAgrupado: any[] = [];
 
   cargandoIA: boolean = false;
   analisisIA: string = '';
@@ -77,24 +82,75 @@ export class AdminVentasComponent implements OnInit, OnDestroy {
     const hoyString = new Date().toLocaleDateString();
     const todas = [...this.operacionesManuales, ...this.comandasPagadas];
 
-    // 1. Filtramos estrictamente las operaciones del día de HOY
+    // --- 1. PROCESAMIENTO VISTA HOY ---
     const operacionesDeHoy = todas.filter(op => {
       const ms = this.obtenerMilisegundos(op.fecha);
       if (ms === 0) return false;
       return new Date(ms).toLocaleDateString() === hoyString;
     });
 
-    // 2. Ordenamos las de hoy (más recientes primero)
     this.operacionesAnidadas = operacionesDeHoy.sort((a, b) => {
       return this.obtenerMilisegundos(b.fecha) - this.obtenerMilisegundos(a.fecha);
     });
 
-    // 3. Recalculamos totales
     this.totalIngresos = this.operacionesAnidadas.filter(o => o.tipo === 'Ingreso').reduce((acc, o) => acc + o.monto, 0);
     this.totalGastos = this.operacionesAnidadas.filter(o => o.tipo === 'Gasto').reduce((acc, o) => acc + o.monto, 0);
     this.balanceTotal = this.totalIngresos - this.totalGastos;
 
+    // --- 2. PROCESAMIENTO VISTA HISTORIAL ---
+    this.agruparHistorial(todas);
+
     this.cdr.detectChanges();
+  }
+
+  private agruparHistorial(todas: any[]) {
+    const agrupado: any = {};
+
+    todas.forEach(op => {
+      const ms = this.obtenerMilisegundos(op.fecha);
+      if (ms === 0) return;
+      
+      const date = new Date(ms);
+      const ano = date.getFullYear().toString();
+      const mesNum = date.getMonth(); 
+      // Obtenemos el nombre del mes en español
+      const mesNombre = new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(date);
+      const mesKey = `${mesNum.toString().padStart(2, '0')}`; // Clave para ordenar meses
+
+      if (!agrupado[ano]) agrupado[ano] = { ano, totalAno: 0, meses: {} };
+      if (!agrupado[ano].meses[mesKey]) agrupado[ano].meses[mesKey] = {
+        nombre: mesNombre.charAt(0).toUpperCase() + mesNombre.slice(1),
+        mesIndex: mesNum,
+        ingresos: 0,
+        gastos: 0,
+        balance: 0,
+        operaciones: []
+      };
+
+      const mesRef = agrupado[ano].meses[mesKey];
+      mesRef.operaciones.push(op);
+      
+      if (op.tipo === 'Ingreso') {
+        mesRef.ingresos += op.monto;
+        agrupado[ano].totalAno += op.monto;
+      } else {
+        mesRef.gastos += op.monto;
+        agrupado[ano].totalAno -= op.monto;
+      }
+      mesRef.balance = mesRef.ingresos - mesRef.gastos;
+    });
+
+    // Convertimos el objeto en array ordenado descendente (2026, 2025...)
+    this.historialAgrupado = Object.values(agrupado).sort((a: any, b: any) => b.ano.localeCompare(a.ano));
+    
+    // Ordenamos los meses internamente de Diciembre a Enero
+    this.historialAgrupado.forEach(a => {
+      a.mesesArr = Object.values(a.meses).sort((m1: any, m2: any) => m2.mesIndex - m1.mesIndex);
+      // Ordenamos las operaciones por fecha dentro de cada mes
+      a.mesesArr.forEach((m:any) => {
+         m.operaciones.sort((o1:any, o2:any) => this.obtenerMilisegundos(o2.fecha) - this.obtenerMilisegundos(o1.fecha));
+      });
+    });
   }
 
   private obtenerMilisegundos(fechaField: any): number {

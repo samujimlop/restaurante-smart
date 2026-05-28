@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import {
   Firestore, collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, increment, getDocs
 } from '@angular/fire/firestore';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 @Component({
   selector: 'app-smart-inventory',
@@ -17,6 +18,8 @@ export class SmartInventory implements OnInit {
   private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
 
   listaProductos: any[] = [];
+  productosCriticos: any[] = [];
+
   mostrarModal = false;
   editandoId: string | null = null;
 
@@ -43,12 +46,8 @@ export class SmartInventory implements OnInit {
 
     try {
       const primerCheck = await getDocs(ref);
-
-      // EL CANDADO ESTÁ CERRADO: Solo escribe si la base de datos está vacía al 100%
       if (primerCheck.empty && !this.yaSembrado) {
         this.yaSembrado = true;
-        console.log("Detectada colección vacía. Inicializando datos base...");
-
         const productosBase = [
           { name: 'Barril Cerveza Mahou', category: 'Bebidas', target: 10, unit: 'uds', purchasePrice: 50.00, salePrice: 150.00, stock: 2 },
           { name: 'Jamón Ibérico', category: 'Carnes', target: 5, unit: 'kg', purchasePrice: 45.00, salePrice: 120.00, stock: 4 },
@@ -64,16 +63,17 @@ export class SmartInventory implements OnInit {
           await addDoc(ref, { ...prod, component: '' });
         }
       }
-    } catch (error) {
-      console.error("Error en la inicialización automática:", error);
-    }
+    } catch (error) { }
 
     onSnapshot(ref, (snapshot) => {
       const arrayTemporal: any[] = [];
       snapshot.forEach((documento) => {
         arrayTemporal.push({ id: documento.id, ...documento.data() });
       });
+      
       this.listaProductos = arrayTemporal;
+      this.productosCriticos = this.listaProductos.filter(p => p.stock < (p.target * 0.2));
+      
       this.cdr.detectChanges();
     });
   }
@@ -94,18 +94,48 @@ export class SmartInventory implements OnInit {
     } catch (error) { }
   }
 
-  async restarStock(item: any) { if (item.stock > 0) { await updateDoc(doc(this.firestore, `inventario/${item.id}`), { stock: increment(-1) }); } }
-  async borrar(id: string) { if (confirm("¿Borrar?")) { await deleteDoc(doc(this.firestore, `inventario/${id}`)); } }
+  async restarStock(item: any) { 
+    if (item.stock > 0) { 
+      await updateDoc(doc(this.firestore, `inventario/${item.id}`), { stock: increment(-1) }); 
+    } 
+  }
+  
+  async borrar(id: string) { 
+    if (confirm("¿Borrar?")) { 
+      await deleteDoc(doc(this.firestore, `inventario/${id}`)); 
+    } 
+  }
 
-  generarAnalisisIA() {
-    this.cargandoIA = true; this.analisisIA = ''; this.cdr.detectChanges();
-    setTimeout(() => {
-      const productosCriticos = this.listaProductos.filter(p => p.stock < (p.target * 0.2));
-      if (productosCriticos.length > 0) {
-        this.analisisIA = `⚠️ Alerta: Tienes ${productosCriticos.length} productos en nivel crítico. Sugiero pedir: ${productosCriticos.map(p => p.name).join(', ')}.`;
-      } else { this.analisisIA = `✅ Inventario estable.`; }
-      this.cargandoIA = false; this.cdr.detectChanges();
-    }, 2500);
+  async generarAnalisisIA() {
+    this.cargandoIA = true; 
+    this.analisisIA = ''; 
+    this.cdr.detectChanges();
+
+    try {
+      const genAI = new GoogleGenerativeAI('AIzaSyDay4csLamzS_-cH5jnOHS_RH8q_wx3Mh0'); 
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+      const infoStock = this.listaProductos.map(p => 
+        `- ${p.name}: Quedan ${p.stock} (El ideal es ${p.target})`
+      ).join('\n');
+
+      const prompt = `Eres el asistente inteligente de inventario de nuestro restaurante. 
+      Analiza los siguientes datos de stock en tiempo real:
+      ${infoStock}
+      
+      Redacta un informe muy breve, directo y profesional de máximo 3 líneas. 
+      Indica claramente si hay estado crítico (si algún producto tiene menos del 20% de su ideal) y recomienda qué comprar, o felicita al equipo si el almacén está sano. No uses formatos raros, solo texto plano y algún emoji.`;
+
+      const result = await model.generateContent(prompt);
+      this.analisisIA = result.response.text();
+
+    } catch (error) {
+      console.error("Error de conexión con Gemini:", error);
+      this.analisisIA = '❌ Error de red: Imposible conectar con el motor de inferencia. Comprueba la conexión.';
+    } finally {
+      this.cargandoIA = false; 
+      this.cdr.detectChanges();
+    }
   }
 
   abrir() { this.editandoId = null; this.resetearFormulario(); this.mostrarModal = true; }

@@ -1,17 +1,34 @@
 <div class="bg-[#0c0a09] min-h-screen text-white p-8 font-sans print:bg-white print:text-black print:p-0">
 
-  <div class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-6 print:hidden">
-    <div class="flex items-center gap-5">
-      <a routerLink="/admin" class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-bold text-sm">← Volver</a>
-      <div>
-        <h1 class="text-3xl font-bold text-yellow-500 tracking-tight">Cierre de Caja Diario</h1>
-        <p class="text-zinc-500 text-xs">Historial unificado de TPV y caja manual (Hoy)</p>
+  <div class="mb-8 border-b border-zinc-800 pb-6 print:hidden">
+    <div class="flex justify-between items-center mb-6">
+      <div class="flex items-center gap-5">
+        <a routerLink="/admin" class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-bold text-sm">← Volver</a>
+        <div>
+          <h1 class="text-3xl font-bold text-yellow-500 tracking-tight">Finanzas y Caja</h1>
+          <p class="text-zinc-500 text-xs">Gestión diaria e historial contable</p>
+        </div>
       </div>
+      
+      @if (modoVista === 'hoy') {
+        <button (click)="imprimirZ()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 active:scale-95 transition-all">
+            <span class="material-symbols-outlined text-sm">print</span> INFORME Z
+        </button>
+      }
     </div>
-    
-    <button (click)="imprimirZ()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl font-black text-xs flex items-center gap-2 active:scale-95 transition-all">
-        <span class="material-symbols-outlined text-sm">print</span> INFORME Z
-    </button>
+
+    <div class="flex gap-2 bg-zinc-900 p-1.5 rounded-2xl w-max">
+      <button (click)="modoVista = 'hoy'" 
+        [class.bg-zinc-800]="modoVista === 'hoy'" [class.text-white]="modoVista === 'hoy'" [class.text-zinc-500]="modoVista !== 'hoy'"
+        class="px-6 py-2 rounded-xl font-bold text-sm transition-all">
+        Caja de Hoy
+      </button>
+      <button (click)="modoVista = 'historial'" 
+        [class.bg-zinc-800]="modoVista === 'historial'" [class.text-white]="modoVista === 'historial'" [class.text-zinc-500]="modoVista !== 'historial'"
+        class="px-6 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+        <span class="material-symbols-outlined text-sm">history</span> Historial Completo
+      </button>
+    </div>
   </div>
 
   <div class="hidden print:block mb-8 text-center border-b-2 border-black pb-4">
@@ -20,129 +37,200 @@
     <p class="text-sm font-bold mt-2">Fecha Fiscal: {{ fechaHoyStr }}</p>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 print:block">
+  @if (modoVista === 'hoy') {
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 print:block">
 
-    <div class="space-y-6 print:mb-8">
-      
-      <div class="grid grid-cols-1 gap-4 print:grid-cols-3 print:gap-2">
-        <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl print:border-gray-300 print:rounded-none">
-          <p class="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1 print:text-black">Balance Neto Diario</p>
-          <p class="text-4xl font-black print:text-black" [class.text-white]="balanceTotal >= 0" [class.text-red-500]="balanceTotal < 0">
-            {{ balanceTotal | number:'1.2-2' }}€
-          </p>
-        </div>
-        <div class="grid grid-cols-2 gap-4 print:col-span-2 print:grid-cols-2">
-          <div class="bg-zinc-900/50 border border-zinc-800 p-5 rounded-3xl print:border-gray-300 print:rounded-none">
-            <p class="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1 print:text-black">Ingresos Totales</p>
-            <p class="text-xl font-black text-green-500 print:text-black">+{{ totalIngresos | number:'1.2-2' }}€</p>
+      <div class="space-y-6 print:mb-8">
+        
+        <div class="grid grid-cols-1 gap-4 print:grid-cols-3 print:gap-2">
+          <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl print:border-gray-300 print:rounded-none">
+            <p class="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-1 print:text-black">Balance Neto Diario</p>
+            <p class="text-4xl font-black print:text-black" [class.text-white]="balanceTotal >= 0" [class.text-red-500]="balanceTotal < 0">
+              {{ balanceTotal | number:'1.2-2' }}€
+            </p>
           </div>
-          <div class="bg-zinc-900/50 border border-zinc-800 p-5 rounded-3xl print:border-gray-300 print:rounded-none">
-            <p class="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1 print:text-black">Gastos de Caja</p>
-            <p class="text-xl font-black text-red-500 print:text-black">-{{ totalGastos | number:'1.2-2' }}€</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl shadow-xl print:hidden">
-        <h3 class="text-lg font-black text-white mb-4">Registrar Movimiento en Caja</h3>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Concepto / Proveedor</label>
-            <input type="text" [(ngModel)]="nuevoConcepto" placeholder="Ej. Compra hielo, Propina..." class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-colors">
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Importe (€)</label>
-              <input type="number" [(ngModel)]="nuevoMonto" placeholder="0.00" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-colors">
+          <div class="grid grid-cols-2 gap-4 print:col-span-2 print:grid-cols-2">
+            <div class="bg-zinc-900/50 border border-zinc-800 p-5 rounded-3xl print:border-gray-300 print:rounded-none">
+              <p class="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1 print:text-black">Ingresos Totales</p>
+              <p class="text-xl font-black text-green-500 print:text-black">+{{ totalIngresos | number:'1.2-2' }}€</p>
             </div>
-            <div>
-              <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Naturaleza</label>
-              <select [(ngModel)]="nuevoTipo" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 appearance-none transition-colors cursor-pointer">
-                <option value="Ingreso">Apertura/Ingreso</option>
-                <option value="Gasto">Gasto/Pago</option>
-              </select>
+            <div class="bg-zinc-900/50 border border-zinc-800 p-5 rounded-3xl print:border-gray-300 print:rounded-none">
+              <p class="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-1 print:text-black">Gastos de Caja</p>
+              <p class="text-xl font-black text-red-500 print:text-black">-{{ totalGastos | number:'1.2-2' }}€</p>
             </div>
           </div>
-          <button (click)="registrarOperacion()" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black py-4 rounded-xl mt-2 transition-all active:scale-95">
-            GUARDAR EN CAJA
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="lg:col-span-2 space-y-6">
-
-      <div class="bg-zinc-900 border border-indigo-500/30 rounded-[2rem] p-6 relative overflow-hidden shadow-2xl print:hidden">
-        <div class="absolute top-0 left-0 w-1 bg-gradient-to-b from-indigo-500 to-purple-600 h-full"></div>
-        <div class="flex justify-between items-center mb-4 pl-2">
-          <div>
-            <h3 class="text-xl font-black text-white flex items-center gap-2">
-              <span class="material-symbols-outlined text-indigo-400">auto_awesome</span> Análisis de Caja
-            </h3>
-          </div>
-          <button type="button" (click)="generarAnalisisIA()" [disabled]="cargandoIA" class="bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white px-5 py-3 rounded-xl font-black text-sm transition-all flex items-center gap-2">
-            @if (cargandoIA) { <span class="material-symbols-outlined animate-spin text-sm">sync</span> } 
-            @else { <span class="material-symbols-outlined text-sm">analytics</span> }
-            Resumen
-          </button>
         </div>
 
-        <div class="bg-zinc-950 p-5 rounded-xl border border-zinc-800 min-h-[80px] flex items-center pl-4">
-          @if (cargandoIA) {
-            <p class="text-sm text-indigo-400 font-bold animate-pulse">Cruzando datos del TPV y la caja...</p>
-          } @else if (analisisIA) {
-            <p class="text-sm text-indigo-100 font-medium leading-relaxed">{{ analisisIA }}</p>
-          } @else {
-            <p class="text-sm text-zinc-600 font-bold">Pulsa el botón para generar el informe de texto de la jornada.</p>
-          }
-        </div>
-      </div>
-
-      <div class="bg-zinc-900 border border-zinc-800 rounded-[2rem] p-6 shadow-xl print:border-none print:shadow-none print:p-0">
-        <h3 class="text-lg font-black text-white mb-6 print:text-black border-b print:border-black print:pb-2">Operaciones del Día</h3>
-
-        <div class="space-y-3 max-h-[50vh] overflow-y-auto pr-2 print:max-h-full print:overflow-visible">
-          @for (op of operacionesAnidadas; track op.id) {
-          <div class="bg-zinc-950 border border-zinc-800/50 p-4 rounded-2xl flex justify-between items-center print:bg-white print:border-b print:border-gray-200 print:rounded-none print:p-2">
-            
-            <div class="flex items-center gap-4">
-              <div class="w-10 h-10 rounded-full flex items-center justify-center print:hidden"
-                [class.bg-green-500/10]="op.tipo === 'Ingreso' && !op.esComanda"
-                [class.text-green-500]="op.tipo === 'Ingreso' && !op.esComanda" 
-                [class.bg-blue-500/10]="op.esComanda"
-                [class.text-blue-400]="op.esComanda" 
-                [class.bg-red-500/10]="op.tipo === 'Gasto'"
-                [class.text-red-500]="op.tipo === 'Gasto'">
-                <span class="material-symbols-outlined text-lg">
-                  {{ op.esComanda ? 'receipt_long' : (op.tipo === 'Ingreso' ? 'arrow_downward' : 'arrow_upward') }}
-                </span>
+        <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl shadow-xl print:hidden">
+          <h3 class="text-lg font-black text-white mb-4">Registrar Movimiento en Caja</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Concepto / Proveedor</label>
+              <input type="text" [(ngModel)]="nuevoConcepto" placeholder="Ej. Compra hielo, Propina..." class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-colors">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Importe (€)</label>
+                <input type="number" [(ngModel)]="nuevoMonto" placeholder="0.00" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-colors">
               </div>
               <div>
-                <div class="flex items-center gap-2">
-                  <p class="font-bold text-white text-sm print:text-black">{{ op.concepto }}</p>
-                  @if (op.esComanda) {
-                    <span class="text-[9px] bg-blue-500/20 text-blue-300 font-black px-1.5 py-0.5 rounded uppercase tracking-wider print:border print:border-black print:bg-white print:text-black">TPV</span>
-                  }
-                </div>
-                <p class="text-xs text-zinc-500 mt-0.5 print:text-black">
-                  {{ op.fecha?.toDate ? (op.fecha.toDate() | date:'HH:mm') : (op.fecha | date:'HH:mm') }}
-                </p>
+                <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Naturaleza</label>
+                <select [(ngModel)]="nuevoTipo" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 appearance-none transition-colors cursor-pointer">
+                  <option value="Ingreso">Apertura/Ingreso</option>
+                  <option value="Gasto">Gasto/Pago</option>
+                </select>
               </div>
             </div>
-
-            <div class="font-black text-lg print:text-black" [class.text-green-500]="op.tipo === 'Ingreso' && !op.esComanda" [class.text-blue-400]="op.esComanda" [class.text-red-500]="op.tipo === 'Gasto'">
-              {{ op.tipo === 'Ingreso' ? '+' : '-' }}{{ op.monto | number:'1.2-2' }}€
-            </div>
-            
+            <button (click)="registrarOperacion()" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black py-4 rounded-xl mt-2 transition-all active:scale-95">
+              GUARDAR EN CAJA
+            </button>
           </div>
-          } @empty {
-          <div class="text-center py-10 text-zinc-600 font-bold text-sm print:text-black">
-            La caja está a cero. No hay operaciones registradas en el día de hoy.
-          </div>
-          }
         </div>
       </div>
 
+      <div class="lg:col-span-2 space-y-6">
+
+        <div class="bg-zinc-900 border border-indigo-500/30 rounded-[2rem] p-6 relative overflow-hidden shadow-2xl print:hidden">
+          <div class="absolute top-0 left-0 w-1 bg-gradient-to-b from-indigo-500 to-purple-600 h-full"></div>
+          <div class="flex justify-between items-center mb-4 pl-2">
+            <div>
+              <h3 class="text-xl font-black text-white flex items-center gap-2">
+                <span class="material-symbols-outlined text-indigo-400">auto_awesome</span> Análisis de Caja
+              </h3>
+            </div>
+            <button type="button" (click)="generarAnalisisIA()" [disabled]="cargandoIA" class="bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white px-5 py-3 rounded-xl font-black text-sm transition-all flex items-center gap-2">
+              @if (cargandoIA) { <span class="material-symbols-outlined animate-spin text-sm">sync</span> } 
+              @else { <span class="material-symbols-outlined text-sm">analytics</span> }
+              Resumen
+            </button>
+          </div>
+
+          <div class="bg-zinc-950 p-5 rounded-xl border border-zinc-800 min-h-[80px] flex items-center pl-4">
+            @if (cargandoIA) {
+              <p class="text-sm text-indigo-400 font-bold animate-pulse">Cruzando datos del TPV y la caja...</p>
+            } @else if (analisisIA) {
+              <p class="text-sm text-indigo-100 font-medium leading-relaxed">{{ analisisIA }}</p>
+            } @else {
+              <p class="text-sm text-zinc-600 font-bold">Pulsa el botón para generar el informe de texto de la jornada.</p>
+            }
+          </div>
+        </div>
+
+        <div class="bg-zinc-900 border border-zinc-800 rounded-[2rem] p-6 shadow-xl print:border-none print:shadow-none print:p-0">
+          <h3 class="text-lg font-black text-white mb-6 print:text-black border-b print:border-black print:pb-2">Operaciones del Día</h3>
+
+          <div class="space-y-3 max-h-[50vh] overflow-y-auto pr-2 print:max-h-full print:overflow-visible">
+            @for (op of operacionesAnidadas; track op.id) {
+            <div class="bg-zinc-950 border border-zinc-800/50 p-4 rounded-2xl flex justify-between items-center print:bg-white print:border-b print:border-gray-200 print:rounded-none print:p-2">
+              
+              <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center print:hidden"
+                  [class.bg-green-500/10]="op.tipo === 'Ingreso' && !op.esComanda"
+                  [class.text-green-500]="op.tipo === 'Ingreso' && !op.esComanda" 
+                  [class.bg-blue-500/10]="op.esComanda"
+                  [class.text-blue-400]="op.esComanda" 
+                  [class.bg-red-500/10]="op.tipo === 'Gasto'"
+                  [class.text-red-500]="op.tipo === 'Gasto'">
+                  <span class="material-symbols-outlined text-lg">
+                    {{ op.esComanda ? 'receipt_long' : (op.tipo === 'Ingreso' ? 'arrow_downward' : 'arrow_upward') }}
+                  </span>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <p class="font-bold text-white text-sm print:text-black">{{ op.concepto }}</p>
+                    @if (op.esComanda) {
+                      <span class="text-[9px] bg-blue-500/20 text-blue-300 font-black px-1.5 py-0.5 rounded uppercase tracking-wider print:border print:border-black print:bg-white print:text-black">TPV</span>
+                    }
+                  </div>
+                  <p class="text-xs text-zinc-500 mt-0.5 print:text-black">
+                    {{ op.fecha?.toDate ? (op.fecha.toDate() | date:'HH:mm') : (op.fecha | date:'HH:mm') }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="font-black text-lg print:text-black" [class.text-green-500]="op.tipo === 'Ingreso' && !op.esComanda" [class.text-blue-400]="op.esComanda" [class.text-red-500]="op.tipo === 'Gasto'">
+                {{ op.tipo === 'Ingreso' ? '+' : '-' }}{{ op.monto | number:'1.2-2' }}€
+              </div>
+              
+            </div>
+            } @empty {
+            <div class="text-center py-10 text-zinc-600 font-bold text-sm print:text-black">
+              La caja está a cero. No hay operaciones registradas en el día de hoy.
+            </div>
+            }
+          </div>
+        </div>
+
+      </div>
     </div>
-  </div>
+  }
+
+  @if (modoVista === 'historial') {
+    <div class="max-w-4xl mx-auto space-y-12">
+      @for (ano of historialAgrupado; track ano.ano) {
+        <div>
+          <div class="flex items-baseline gap-4 border-b-2 border-zinc-800 pb-4 mb-6">
+            <h2 class="text-5xl font-black text-white tracking-tighter">{{ ano.ano }}</h2>
+            <p class="text-xl font-bold text-zinc-500">Total Anual: <span class="text-yellow-500">{{ ano.totalAno | number:'1.2-2' }}€</span></p>
+          </div>
+
+          <div class="space-y-4">
+            @for (mes of ano.mesesArr; track mes.nombre) {
+              <details class="bg-zinc-900 border border-zinc-800 rounded-2xl group transition-all">
+                
+                <summary class="p-6 cursor-pointer list-none flex justify-between items-center hover:bg-zinc-800/50 rounded-2xl">
+                  <div class="flex items-center gap-4">
+                    <span class="material-symbols-outlined text-zinc-500 group-open:rotate-90 transition-transform">chevron_right</span>
+                    <h3 class="text-2xl font-black text-white capitalize">{{ mes.nombre }}</h3>
+                    <span class="bg-zinc-800 text-zinc-400 text-xs font-bold px-3 py-1 rounded-full">{{ mes.operaciones.length }} regs.</span>
+                  </div>
+                  
+                  <div class="flex gap-6 text-right">
+                    <div class="hidden sm:block">
+                      <p class="text-[10px] uppercase font-bold text-zinc-500">Ingresos</p>
+                      <p class="text-green-500 font-bold text-sm">+{{ mes.ingresos | number:'1.2-2' }}€</p>
+                    </div>
+                    <div class="hidden sm:block">
+                      <p class="text-[10px] uppercase font-bold text-zinc-500">Gastos</p>
+                      <p class="text-red-500 font-bold text-sm">-{{ mes.gastos | number:'1.2-2' }}€</p>
+                    </div>
+                    <div class="border-l border-zinc-700 pl-6">
+                      <p class="text-[10px] uppercase font-bold text-zinc-500">Balance Neto</p>
+                      <p class="font-black text-lg" [class.text-white]="mes.balance >= 0" [class.text-red-500]="mes.balance < 0">
+                        {{ mes.balance | number:'1.2-2' }}€
+                      </p>
+                    </div>
+                  </div>
+                </summary>
+
+                <div class="p-6 pt-2 border-t border-zinc-800 bg-zinc-950 rounded-b-2xl max-h-[60vh] overflow-y-auto">
+                  <div class="space-y-2">
+                    @for (op of mes.operaciones; track op.id) {
+                      <div class="flex justify-between items-center py-3 border-b border-zinc-800/50 last:border-0">
+                        <div class="flex items-center gap-4">
+                          <span class="text-xs font-mono text-zinc-500 w-12">{{ op.fecha?.toDate ? (op.fecha.toDate() | date:'dd/MM') : (op.fecha | date:'dd/MM') }}</span>
+                          <span class="text-sm font-bold text-zinc-300">{{ op.concepto }}</span>
+                          @if (op.esComanda) { <span class="text-[9px] bg-blue-500/10 text-blue-400 font-black px-1.5 py-0.5 rounded">TPV</span> }
+                        </div>
+                        <span class="font-bold text-sm" [class.text-green-500]="op.tipo === 'Ingreso' && !op.esComanda" [class.text-blue-400]="op.esComanda" [class.text-red-500]="op.tipo === 'Gasto'">
+                          {{ op.tipo === 'Ingreso' ? '+' : '-' }}{{ op.monto | number:'1.2-2' }}€
+                        </span>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+              </details>
+            }
+          </div>
+        </div>
+      } @empty {
+        <div class="text-center py-20 text-zinc-600">
+          <span class="material-symbols-outlined text-6xl mb-4 opacity-50">inbox</span>
+          <p class="font-bold">No hay registros históricos en la base de datos.</p>
+        </div>
+      }
+    </div>
+  }
+
 </div>

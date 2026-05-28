@@ -85,16 +85,31 @@
         }
 
         @if (esAdmin) {
-        <a routerLink="/inventory" class="relative overflow-hidden block bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group">
+        <a routerLink="/inventory" class="relative overflow-hidden block bg-zinc-900 border border-zinc-800 p-6 rounded-3xl hover:bg-zinc-800 transition-all hover:-translate-y-1 group border-2"
+           [class.border-red-500]="alertasInventario > 0" [class.border-zinc-800]="alertasInventario === 0">
+            
+            @if (alertasInventario > 0) {
+            <div class="absolute top-4 right-4 z-20 flex h-6 w-6 items-center justify-center">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-6 w-6 bg-red-500 items-center justify-center text-white text-[10px] font-black shadow-lg">
+                    {{ alertasInventario }}
+                </span>
+            </div>
+            }
+
             <div class="absolute -bottom-4 -right-4 text-blue-500 opacity-5 group-hover:opacity-20 transition-all duration-300 group-hover:scale-110 group-hover:-rotate-6">
                 <span class="material-symbols-outlined text-8xl">inventory_2</span>
             </div>
             <div class="relative z-10">
-                <div class="w-12 h-12 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center mb-4">
-                    <span class="material-symbols-outlined">inventory_2</span>
+                <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-4"
+                     [class.bg-red-500]="alertasInventario > 0" [class.text-white]="alertasInventario > 0"
+                     [class.bg-blue-500/10]="alertasInventario === 0" [class.text-blue-500]="alertasInventario === 0">
+                    <span class="material-symbols-outlined">{{ alertasInventario > 0 ? 'warning' : 'inventory_2' }}</span>
                 </div>
                 <h4 class="font-bold text-white mb-1">Inventario</h4>
-                <p class="text-[10px] text-zinc-500 uppercase font-black">Smart Stock</p>
+                <p class="text-[10px] uppercase font-black" [class.text-red-400]="alertasInventario > 0" [class.text-zinc-500]="alertasInventario === 0">
+                    {{ alertasInventario > 0 ? 'FALTA STOCK' : 'Smart Stock' }}
+                </p>
             </div>
         </a>
 
