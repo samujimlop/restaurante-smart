@@ -112,9 +112,8 @@ export class SmartInventory implements OnInit {
     this.cdr.detectChanges();
 
     try {
-      const genAI = new GoogleGenerativeAI('AIzaSyDay4csLamzS_-cH5jnOHS_RH8q_wx3Mh0'); 
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
+      const genAI = new GoogleGenerativeAI('AQ.Ab8RN6K7WvnQKCxLujzdXoZT_0WEkZCeeKQgDakETY9vBxfb_w'); 
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
       const infoStock = this.listaProductos.map(p => 
         `- ${p.name}: Quedan ${p.stock} (El ideal es ${p.target})`
       ).join('\n');
