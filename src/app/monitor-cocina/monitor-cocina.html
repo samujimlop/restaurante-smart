@@ -1,4 +1,4 @@
-<div class="bg-[#0c0a09] min-h-screen text-white font-sans p-6 flex flex-col h-screen">
+<div class="bg-[#0c0a09] min-h-screen text-white font-sans p-6 flex flex-col h-screen relative">
     
     <div class="flex justify-between items-center mb-6 border-b border-zinc-800 pb-4 shrink-0">
         <div class="flex items-center gap-6">
@@ -10,9 +10,12 @@
                 <p class="text-zinc-500 text-sm font-bold mt-1">Conexión en Tiempo Real Activa</p>
             </div>
         </div>
-        <button class="bg-purple-600/20 text-purple-400 border border-purple-500/30 px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-purple-600/40 transition-colors">
-            <span class="material-symbols-outlined">auto_awesome</span>
-            IA: Optimizar Lote
+        
+        <button (click)="optimizarLoteIA()" [disabled]="cargandoIA" class="bg-purple-600/20 text-purple-400 border border-purple-500/30 px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-purple-600/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            <span class="material-symbols-outlined" [class.animate-spin]="cargandoIA">
+                {{ cargandoIA ? 'sync' : 'auto_awesome' }}
+            </span>
+            {{ cargandoIA ? 'Consultando IA...' : 'IA: Optimizar Lote' }}
         </button>
     </div>
 
@@ -137,4 +140,28 @@
         </div>
 
     </div>
+
+    @if (mostrarModalIA) {
+    <div class="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
+        <div class="bg-zinc-900 border border-purple-500/50 p-8 rounded-[2rem] w-full max-w-2xl shadow-[0_0_50px_rgba(168,85,247,0.15)] relative animate-in zoom-in-95 duration-300 overflow-hidden">
+            
+            <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 to-blue-500"></div>
+            
+            <button (click)="mostrarModalIA = false" class="absolute top-6 right-6 text-zinc-600 hover:text-white uppercase font-bold text-xs transition-colors">Cerrar ×</button>
+
+            <div class="flex items-center gap-3 mb-6">
+                <span class="material-symbols-outlined text-4xl text-purple-500">auto_awesome</span>
+                <h2 class="text-2xl font-black text-white">Plan de Cocina IA</h2>
+            </div>
+
+            <div class="bg-zinc-950 border border-zinc-800 p-6 rounded-xl prose prose-invert max-w-none text-zinc-300 text-sm leading-relaxed max-h-[60vh] overflow-y-auto whitespace-pre-wrap">
+                {{ respuestaIA }}
+            </div>
+
+            <button (click)="mostrarModalIA = false" class="w-full bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-xl font-black text-sm transition-all mt-6 uppercase tracking-widest active:scale-95">
+                Entendido, a los fogones
+            </button>
+        </div>
+    </div>
+    }
 </div>

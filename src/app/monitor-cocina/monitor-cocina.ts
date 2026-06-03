@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angula
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Firestore, collection, query, onSnapshot, doc, updateDoc } from '@angular/fire/firestore';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 @Component({
   selector: 'app-monitor-cocina',
@@ -18,6 +19,11 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
   comandasFuegos: any[] = [];
   comandasPase: any[] = [];
 
+  // Variables para la IA
+  cargandoIA: boolean = false;
+  mostrarModalIA: boolean = false;
+  respuestaIA: string = '';
+
   ngOnInit() {
     const q = query(collection(this.firestore, 'comandas'));
 
@@ -28,7 +34,6 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
         const itemsCrudos = data['items'] || [];
 
         itemsCrudos.forEach((item: any) => {
-          // FILTRO BEBIDAS: La cocina ignora lo que va a la barra
           const cat = item.categoria ? item.categoria.toLowerCase().trim() : '';
           if (cat === 'bebidas' || cat === 'bebida' || cat === 'refrescos') {
             return; 
@@ -51,7 +56,6 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
 
         const itemsParaCocina = Array.from(agrupados.values());
 
-        // Si la comanda solo tenía bebidas, la cocina no tiene que verla
         if (itemsParaCocina.length === 0) {
           return null; 
         }
@@ -64,16 +68,13 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
         } as any; 
       });
 
-      // Limpiamos los nulls (mesas que solo han pedido bebida)
       const todas = todasBruto.filter(c => c !== null);
 
-      // Clasificación estricta por estado, sin importar la fecha en la que se abrieron
       this.comandasFuegos = todas.filter((c: any) => c.estado?.toLowerCase().trim() === 'preparando');
       this.comandasPase = todas.filter((c: any) => c.estado?.toLowerCase().trim() === 'listo');
 
       this.comandasNuevas = todas.filter((c: any) => {
         const est = c.estado ? c.estado.toLowerCase().trim() : 'pendiente';
-        // Se aceptan todas las variaciones de inicio de comanda
         return est === 'pendiente' || est === 'recibido' || est === 'nuevo';
       });
 
@@ -109,6 +110,46 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
       await updateDoc(doc(this.firestore, 'comandas', comanda.id), { items: itemsActualizados });
     } catch (error) {
       console.error("Error al tachar el plato:", error);
+    }
+  }
+
+  // --- LÓGICA DE GEMINI INTEGRADA ---
+  async optimizarLoteIA() {
+    if (this.comandasNuevas.length === 0) {
+      alert("No hay pedidos nuevos en cola para optimizar.");
+      return;
+    }
+
+    this.cargandoIA = true;
+    this.respuestaIA = '';
+    this.cdr.detectChanges();
+
+    try {
+      const genAI = new GoogleGenerativeAI('AQ.Ab8RN6K7WvnQKCxLujzdXoZT_0WEkZCeeKQgDakETY9vBxfb_w'); 
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+      const datosParaIA = this.comandasNuevas.map(c => {
+        return `Mesa ${c.numeroMesa}: ` + c.itemsAgrupados.map((i: any) => `${i.cantidad}x ${i.name}`).join(', ');
+      }).join('\n');
+
+      const prompt = `Eres el Jefe de Cocina experto del restaurante.
+      Analiza estos pedidos pendientes en tiempo real:
+      ${datosParaIA}
+      
+      Redacta un plan muy directo de cómo agrupar los platos para cocinarlos a la vez (ej: qué meter junto a la freidora, qué a la plancha).
+      Usa viñetas cortas. Sé profesional. No saludes, ve al grano.`;
+
+      const result = await model.generateContent(prompt);
+      this.respuestaIA = result.response.text();
+      this.mostrarModalIA = true;
+
+    } catch (error) {
+      console.error("Error con Gemini:", error);
+      this.respuestaIA = '❌ Error al conectar con la Inteligencia Artificial.';
+      this.mostrarModalIA = true;
+    } finally {
+      this.cargandoIA = false;
+      this.cdr.detectChanges();
     }
   }
 }

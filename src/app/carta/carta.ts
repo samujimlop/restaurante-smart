@@ -12,7 +12,7 @@ import { Firestore, collection, getDocs, addDoc } from '@angular/fire/firestore'
 })
 export class CartaComponent implements OnInit {
   private firestore: Firestore = inject(Firestore);
-  private cdr: ChangeDetectorRef = inject(ChangeDetectorRef); // Añadimos esto
+  private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
 
   platos: any[] = [];
   categorias: string[] = [];
@@ -28,7 +28,6 @@ export class CartaComponent implements OnInit {
 
       const cats = new Set<string>();
       this.platos.forEach(p => {
-        // En tu Firebase la clave es 'category'
         const cat = p.category;
         if (cat) cats.add(cat);
       });
@@ -38,7 +37,6 @@ export class CartaComponent implements OnInit {
         this.categoriaSeleccionada = this.categorias[0];
       }
 
-      // IMPORTANTE: Forzamos a Angular a actualizar la vista
       this.cdr.detectChanges(); 
 
     } catch (error) {
@@ -48,11 +46,8 @@ export class CartaComponent implements OnInit {
 
   seleccionarCategoria(cat: string) {
     this.categoriaSeleccionada = cat;
-    // Forzamos actualización al cambiar de pestaña
     this.cdr.detectChanges(); 
   }
-
-  // --- LÓGICA DEL MODAL DE RESERVAS ---
 
   abrirReserva() {
     this.mostrarFormulario = true;
