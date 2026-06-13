@@ -19,6 +19,7 @@ export class SmartInventory implements OnInit {
 
   listaProductos: any[] = [];
   productosCriticos: any[] = [];
+terminoBusqueda: string = '';
 
   mostrarModal = false;
   editandoId: string | null = null;
@@ -158,4 +159,15 @@ export class SmartInventory implements OnInit {
   }
 
   resetearFormulario() { this.nuevoProducto = { name: '', category: 'Vegetales', component: '', target: 100, unit: 'kg', purchasePrice: null, salePrice: null }; this.editandoId = null; }
+  get productosFiltrados() {
+  const termino = this.terminoBusqueda.toLowerCase().trim();
+  if (!termino) {
+    return this.listaProductos;
+  }
+  return this.listaProductos.filter(p =>
+    p.name.toLowerCase().includes(termino) ||
+    (p.category || '').toLowerCase().includes(termino)
+  );
+}
+
 }
