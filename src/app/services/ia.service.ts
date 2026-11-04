@@ -19,7 +19,7 @@ export class IaService {
   private modelo?: ReturnType<typeof getGenerativeModel>;
 
   async generar(prompt: string): Promise<string> {
-    this.modelo ??= getGenerativeModel(getAI(this.app), { model: 'gemini-2.5-flash' });
+    this.modelo ??= getGenerativeModel(getAI(this.app), { model: 'gemini-3.8-flash' });
     const resultado = await this.modelo.generateContent(prompt);
     return resultado.response.text();
   }

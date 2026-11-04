@@ -2,7 +2,7 @@
 
 Aplicación web para la gestión integral de un restaurante, con asistentes de IA generativa (Gemini) para cocina e inventario. Funciona como PWA y sincroniza en tiempo real entre sala, cocina y gerencia.
 
-**Stack:** Angular 21 · TypeScript · Firebase (Authentication, Firestore, Hosting, AI Logic, App Check) · Gemini 2.5 Flash · Tailwind CSS
+**Stack:** Angular 21 · TypeScript · Firebase (Authentication, Firestore, Hosting, AI Logic, App Check) · Gemini 3.8 Flash · Tailwind CSS
 
 <p align="center">
   <img src="docs/prototipos/dashboard_overview_smart_restaurant/screen.png" width="49%" alt="Panel de control">
