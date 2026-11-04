@@ -1,7 +1,7 @@
 import { ApplicationConfig, isDevMode } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
-import { provideAppCheck, initializeAppCheck, ReCaptchaV3Provider } from '@angular/fire/app-check';
+import { provideAppCheck, initializeAppCheck, ReCaptchaEnterpriseProvider } from '@angular/fire/app-check';
 import { provideFirestore, getFirestore } from '@angular/fire/firestore';
 import { provideAuth, getAuth } from '@angular/fire/auth';
 import { provideServiceWorker } from '@angular/service-worker';
@@ -16,7 +16,7 @@ export const appConfig: ApplicationConfig = {
     // App Check: Firebase AI Logic solo acepta peticiones con un token válido de esta app
     provideAppCheck(() =>
       initializeAppCheck(getApp(), {
-        provider: new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY),
+        provider: new ReCaptchaEnterpriseProvider(RECAPTCHA_SITE_KEY),
         isTokenAutoRefreshEnabled: true,
       }),
     ),
