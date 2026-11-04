@@ -1,36 +1,65 @@
 import { Routes } from '@angular/router';
-import { HomeComponent } from './home/home';
-import { AdminLogin } from './admin-login/admin-login';
-import { DashboardOverviewComponent } from './dashboard-overview/dashboard-overview';
-import { SmartInventory } from './smart-inventory/smart-inventory';
-import { CartaComponent } from './carta/carta';
-import { AdminReservasComponent } from './admin-reservas/admin-reservas';
-import { AdminMenuComponent } from './admin-menu/admin-menu';
-import { AdminStaffComponent } from './admin-staff/admin-staff';
-import { AdminVentasComponent } from './admin-ventas/admin-ventas';
-import { MonitorCocinaComponent } from './monitor-cocina/monitor-cocina';
-import { AdminMesasComponent } from './mis-mesas/mis-mesas';
 
 import { adminGuard } from './guards/admin.guard';
 import { staffGuard } from './guards/staff.guard';
 
+// Cada pantalla se carga bajo demanda (lazy loading): el cliente que abre la carta
+// no descarga el código del panel de gerencia.
 export const routes: Routes = [
-  { path: '', component: HomeComponent },
-  { path: 'login', component: AdminLogin },
+  { path: '', loadComponent: () => import('./home/home').then((m) => m.HomeComponent) },
+  {
+    path: 'login',
+    loadComponent: () => import('./admin-login/admin-login').then((m) => m.AdminLogin),
+  },
 
-  { path: 'carta', component: CartaComponent },
+  { path: 'carta', loadComponent: () => import('./carta/carta').then((m) => m.CartaComponent) },
 
   // Personal con sesión iniciada (camareros, cocina y gerencia)
-  { path: 'admin', component: DashboardOverviewComponent, canActivate: [staffGuard] },
-  { path: 'monitor-cocina', component: MonitorCocinaComponent, canActivate: [staffGuard] },
-  { path: 'mis-mesas', component: AdminMesasComponent, canActivate: [staffGuard] },
-  { path: 'admin-reservas', component: AdminReservasComponent, canActivate: [staffGuard] },
+  {
+    path: 'admin',
+    loadComponent: () =>
+      import('./dashboard-overview/dashboard-overview').then((m) => m.DashboardOverviewComponent),
+    canActivate: [staffGuard],
+  },
+  {
+    path: 'monitor-cocina',
+    loadComponent: () =>
+      import('./monitor-cocina/monitor-cocina').then((m) => m.MonitorCocinaComponent),
+    canActivate: [staffGuard],
+  },
+  {
+    path: 'mis-mesas',
+    loadComponent: () => import('./mis-mesas/mis-mesas').then((m) => m.AdminMesasComponent),
+    canActivate: [staffGuard],
+  },
+  {
+    path: 'admin-reservas',
+    loadComponent: () =>
+      import('./admin-reservas/admin-reservas').then((m) => m.AdminReservasComponent),
+    canActivate: [staffGuard],
+  },
 
   // Solo gerencia
-  { path: 'inventory', component: SmartInventory, canActivate: [adminGuard] },
-  { path: 'admin-menu', component: AdminMenuComponent, canActivate: [adminGuard] },
-  { path: 'admin-staff', component: AdminStaffComponent, canActivate: [adminGuard] },
-  { path: 'admin-ventas', component: AdminVentasComponent, canActivate: [adminGuard] },
+  {
+    path: 'inventory',
+    loadComponent: () => import('./smart-inventory/smart-inventory').then((m) => m.SmartInventory),
+    canActivate: [adminGuard],
+  },
+  {
+    path: 'admin-menu',
+    loadComponent: () => import('./admin-menu/admin-menu').then((m) => m.AdminMenuComponent),
+    canActivate: [adminGuard],
+  },
+  {
+    path: 'admin-staff',
+    loadComponent: () => import('./admin-staff/admin-staff').then((m) => m.AdminStaffComponent),
+    canActivate: [adminGuard],
+  },
+  {
+    path: 'admin-ventas',
+    loadComponent: () => import('./admin-ventas/admin-ventas').then((m) => m.AdminVentasComponent),
+    canActivate: [adminGuard],
+  },
 
   { path: '**', redirectTo: '' },
 ];

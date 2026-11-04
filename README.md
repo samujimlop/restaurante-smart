@@ -1,5 +1,7 @@
 # RestauranteSmart
 
+[![CI](https://github.com/samujimlop/restaurante-smart/actions/workflows/ci.yml/badge.svg)](https://github.com/samujimlop/restaurante-smart/actions/workflows/ci.yml)
+
 Aplicación web para la gestión integral de un restaurante, con asistentes de IA generativa (Gemini) para cocina e inventario. Funciona como PWA y sincroniza en tiempo real entre sala, cocina y gerencia.
 
 **Stack:** Angular 21 · TypeScript · Firebase (Authentication, Firestore, Hosting, AI Logic, App Check) · Gemini 3.8 Flash · Tailwind CSS
@@ -29,6 +31,7 @@ La primera versión del proyecto tenía los fallos típicos de un prototipo: cla
 - **Autenticación real.** Cada empleado entra con usuario + PIN mediante **Firebase Authentication**. El PIN es la contraseña de su cuenta, así que Firebase lo guarda con hash y limita los intentos. Nunca se guarda en Firestore.
 - **Autorización en el servidor.** Las [reglas de Firestore](firestore.rules) deciden qué colección puede leer o escribir cada rol (cliente, empleado, gerente) y validan las reservas que llegan de clientes anónimos. Los guards de Angular solo controlan la navegación, así que manipular el navegador no da acceso a los datos.
 - **Alta de empleados sin cerrar la sesión del gerente.** Se usa una instancia secundaria de Firebase Auth con persistencia en memoria.
+- **Tests y CI.** Tests unitarios de los guards y del servicio de IA (incluido el modelo de respaldo), ejecutados en GitHub Actions junto al build de producción en cada push.
 - **Sin fugas de memoria.** Todas las suscripciones en tiempo real (`onSnapshot`) se cancelan al destruir el componente mediante `DestroyRef`.
 
 ## Puesta en marcha
@@ -36,8 +39,9 @@ La primera versión del proyecto tenía los fallos típicos de un prototipo: cla
 Requisitos: Node.js 20+ y un proyecto de Firebase.
 
 ```bash
-npm install --legacy-peer-deps
+npm install
 npm start            # http://localhost:4200
+npm run test:ci      # tests unitarios (Vitest)
 ```
 
 Configuración del proyecto de Firebase:
@@ -76,7 +80,7 @@ docs/prototipos/   Diseños iniciales de las pantallas
 
 ## Próximos pasos
 
-- Tests unitarios de los servicios y tests de las reglas con el emulador de Firestore.
+- Tests de las reglas de seguridad con el emulador de Firestore.
 
 ---
 
