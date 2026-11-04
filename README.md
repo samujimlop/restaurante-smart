@@ -6,10 +6,13 @@ Aplicación web para la gestión integral de un restaurante, con asistentes de I
 
 **Stack:** Angular 21 · TypeScript · Firebase (Authentication, Firestore, Hosting, AI Logic, App Check) · Gemini 3.8 Flash · Tailwind CSS
 
-<p align="center">
-  <img src="docs/prototipos/dashboard_overview_smart_restaurant/screen.png" width="49%" alt="Panel de control">
-  <img src="docs/prototipos/smart_inventory_smart_restaurant/screen.png" width="49%" alt="Inventario inteligente">
-</p>
+| Panel de control | Inventario con IA |
+|---|---|
+| ![Panel de control](docs/capturas/panel.jpg) | ![Inventario inteligente](docs/capturas/inventario.jpg) |
+| **Monitor de cocina** | **Carta digital** |
+| ![Monitor de cocina](docs/capturas/cocina.jpg) | ![Carta digital](docs/capturas/carta.jpg) |
+
+**Demo:** [restaurante-smart-c1de7.web.app](https://restaurante-smart-c1de7.web.app)
 
 ## Funcionalidades
 
@@ -75,6 +78,7 @@ src/app/
 ├── admin-*/       Módulos de gerencia (carta, personal, reservas, ventas)
 └── firebase.config.ts
 firestore.rules    Autorización por rol
+docs/capturas/     Capturas de la app
 docs/prototipos/   Diseños iniciales de las pantallas
 ```
 
