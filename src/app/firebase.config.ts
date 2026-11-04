@@ -15,3 +15,7 @@ export const firebaseConfig = {
 // Cada empleado inicia sesión con "usuario + PIN". Internamente se traduce a una
 // cuenta de Firebase Auth con este dominio (el correo nunca se usa para enviar nada).
 export const DOMINIO_EMPLEADOS = `${firebaseConfig.projectId}.web.app`;
+
+// Clave de sitio de reCAPTCHA v3 para Firebase App Check (pública por diseño).
+// App Check garantiza que solo esta web pueda consumir la cuota de Gemini.
+export const RECAPTCHA_SITE_KEY = '6Lf74w8uAAAAABCA-6Jgpxl9juh1vyutvQpv1rMQ';
