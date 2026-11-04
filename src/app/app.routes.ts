@@ -11,25 +11,26 @@ import { AdminVentasComponent } from './admin-ventas/admin-ventas';
 import { MonitorCocinaComponent } from './monitor-cocina/monitor-cocina';
 import { AdminMesasComponent } from './mis-mesas/mis-mesas';
 
-//  Importar el Guard
 import { adminGuard } from './guards/admin.guard';
+import { staffGuard } from './guards/staff.guard';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'login', component: AdminLogin },
-  
-  // Panel general (Abierto a staff/cocina)
-  { path: 'admin', component: DashboardOverviewComponent },
-  { path: 'carta', component: CartaComponent },
-  { path: 'monitor-cocina', component: MonitorCocinaComponent },
-  { path: 'mis-mesas', component: AdminMesasComponent },
-  { path: 'admin-reservas', component: AdminReservasComponent },
 
-  // Rutas Blindadas (Solo Admins)
+  { path: 'carta', component: CartaComponent },
+
+  // Personal con sesión iniciada (camareros, cocina y gerencia)
+  { path: 'admin', component: DashboardOverviewComponent, canActivate: [staffGuard] },
+  { path: 'monitor-cocina', component: MonitorCocinaComponent, canActivate: [staffGuard] },
+  { path: 'mis-mesas', component: AdminMesasComponent, canActivate: [staffGuard] },
+  { path: 'admin-reservas', component: AdminReservasComponent, canActivate: [staffGuard] },
+
+  // Solo gerencia
   { path: 'inventory', component: SmartInventory, canActivate: [adminGuard] },
   { path: 'admin-menu', component: AdminMenuComponent, canActivate: [adminGuard] },
   { path: 'admin-staff', component: AdminStaffComponent, canActivate: [adminGuard] },
   { path: 'admin-ventas', component: AdminVentasComponent, canActivate: [adminGuard] },
-  
-  { path: '**', redirectTo: '' }
+
+  { path: '**', redirectTo: '' },
 ];

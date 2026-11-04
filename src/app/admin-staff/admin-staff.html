@@ -49,7 +49,7 @@
       }
 
       <div class="flex justify-between items-center pt-4 border-t border-zinc-800">
-        <span class="text-xs text-zinc-600 font-mono italic">PIN: {{ emp.pin }}</span>
+        <span class="text-xs text-zinc-600 font-mono italic">&#64;{{ emp.usuario }}</span>
         <div class="flex gap-4">
           <button (click)="editarEmpleado(emp)"
             class="text-blue-500 hover:text-blue-400 text-xs font-bold transition-colors">EDITAR</button>
@@ -69,21 +69,31 @@
       </h2>
 
       <div class="space-y-4">
+        @if (errorMsg) {
+        <div class="bg-red-500/10 border border-red-500/20 p-3 rounded-xl text-red-400 text-xs font-bold">{{ errorMsg }}</div>
+        }
         <input type="text" [(ngModel)]="nuevoEmpleado.nombre" placeholder="Nombre completo (ej: Pedro Pérez)"
           class="w-full bg-zinc-800 border border-zinc-700 p-4 rounded-xl text-white outline-none focus:border-yellow-500">
 
         <div class="relative">
           <span class="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-bold">@</span>
           <input type="text" [(ngModel)]="nuevoEmpleado.usuario" placeholder="Nombre de usuario"
-            class="w-full bg-zinc-800 border border-zinc-700 p-4 pl-8 rounded-xl text-yellow-500 outline-none focus:border-yellow-500 font-bold">
+            [disabled]="!!editandoId" autocomplete="off"
+            class="disabled:opacity-50 w-full bg-zinc-800 border border-zinc-700 p-4 pl-8 rounded-xl text-yellow-500 outline-none focus:border-yellow-500 font-bold">
         </div>
 
         <div class="grid grid-cols-2 gap-4">
-          <input type="text" [(ngModel)]="nuevoEmpleado.pin" placeholder="PIN (4 cifras)"
+          @if (!editandoId) {
+          <input type="password" inputmode="numeric" maxlength="6" autocomplete="new-password"
+            [(ngModel)]="nuevoEmpleado.pin" placeholder="PIN (6 cifras)"
             class="w-full bg-zinc-800 border border-zinc-700 p-4 rounded-xl text-white font-bold text-center tracking-widest outline-none focus:border-yellow-500">
+          } @else {
+          <p class="text-[11px] text-zinc-500 leading-snug self-center">El usuario y el PIN no se pueden cambiar. Para cambiarlos, elimina el acceso y créalo de nuevo.</p>
+          }
           <select [(ngModel)]="nuevoEmpleado.rol"
             class="w-full bg-zinc-800 border border-zinc-700 p-4 rounded-xl text-white outline-none cursor-pointer">
             <option value="Camarero">Camarero</option>
+            <option value="Cocinero">Cocinero</option>
             <option value="Gerente">Gerente</option>
           </select>
         </div>
@@ -119,8 +129,8 @@
         <div class="flex gap-4 pt-6">
           <button (click)="cerrarModal()"
             class="flex-1 py-4 text-zinc-400 font-bold hover:text-white transition-colors">CANCELAR</button>
-          <button (click)="guardarEmpleado()"
-            class="flex-1 py-4 bg-yellow-500 text-black font-bold rounded-xl shadow-lg hover:bg-yellow-400 transition-all">
+          <button (click)="guardarEmpleado()" [disabled]="guardando"
+            class="disabled:opacity-50 flex-1 py-4 bg-yellow-500 text-black font-bold rounded-xl shadow-lg hover:bg-yellow-400 transition-all">
             {{ editandoId ? 'ACTUALIZAR' : 'GUARDAR' }}
           </button>
         </div>

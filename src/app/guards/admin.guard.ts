@@ -1,27 +1,16 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
 
-export const adminGuard: CanActivateFn = (route, state) => {
+/**
+ * Solo gerencia. Es una protección de interfaz: la autorización real la aplican
+ * las reglas de Firestore, así que saltarse este guard no da acceso a los datos.
+ */
+export const adminGuard: CanActivateFn = async () => {
+  const auth = inject(AuthService);
   const router = inject(Router);
-  
-  // 1. Verificación de estado de sesión
-  const sesion = localStorage.getItem('usuarioLogueado');
 
-  if (sesion) {
-    try {
-      const usuario = JSON.parse(sesion);
-      const rol = usuario.rol ? String(usuario.rol).toLowerCase() : '';
-
-      // 2. Validación de privilegios
-      if (rol === 'admin' || rol === 'administrador' || rol === 'jefe' || rol === 'gerente') {
-        return true; // Acceso autorizado
-      }
-    } catch (e) {
-      console.error('Error procesando sesión en el Guard', e);
-    }
-  }
-
-  // 3. Fallo de seguridad: Redirección inmediata
-  router.navigate(['/admin']);
-  return false;
+  const perfil = await auth.esperarSesion();
+  if (!perfil) return router.createUrlTree(['/login']);
+  return auth.esGerente() ? true : router.createUrlTree(['/admin']);
 };

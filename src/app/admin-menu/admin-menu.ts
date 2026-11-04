@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -12,6 +12,7 @@ import { Firestore, collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc } 
 })
 export class AdminMenuComponent implements OnInit {
   private firestore: Firestore = inject(Firestore);
+  private destroyRef = inject(DestroyRef);
   private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
 
   listaPlatos: any[] = [];
@@ -32,7 +33,7 @@ export class AdminMenuComponent implements OnInit {
 
   ngOnInit() {
     const ref = collection(this.firestore, 'platos');
-    onSnapshot(ref, (snapshot) => {
+    this.destroyRef.onDestroy(onSnapshot(ref, (snapshot) => {
       const arrayTemporal: any[] = [];
       snapshot.forEach((documento) => {
         const data = documento.data();
@@ -44,7 +45,7 @@ export class AdminMenuComponent implements OnInit {
       });
       this.listaPlatos = arrayTemporal;
       this.cdr.detectChanges();
-    });
+    }));
   }
 
   toggleAllergen(alergeno: string) {

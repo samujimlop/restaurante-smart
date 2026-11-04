@@ -1,32 +1,24 @@
 import { ApplicationConfig, isDevMode } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { routes } from './app.routes';
 import { provideFirebaseApp, initializeApp } from '@angular/fire/app';
 import { provideFirestore, getFirestore } from '@angular/fire/firestore';
-
-// 1. Añadimos la importación del Service Worker de la PWA
+import { provideAuth, getAuth } from '@angular/fire/auth';
 import { provideServiceWorker } from '@angular/service-worker';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCIwKNwi6e9zq6bYzM7GVP4758Wpxo_E6Y",
-  authDomain: "restaurante-smart-c1de7.firebaseapp.com",
-  projectId: "restaurante-smart-c1de7",
-  storageBucket: "restaurante-smart-c1de7.firebasestorage.app",
-  messagingSenderId: "488925030901",
-  appId: "1:488925030901:web:5536f4868320eacfc7d8bc",
-  measurementId: "G-G47E9HQK7V"
-};
+import { routes } from './app.routes';
+import { firebaseConfig } from './firebase.config';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
     provideFirebaseApp(() => initializeApp(firebaseConfig)),
     provideFirestore(() => getFirestore()),
-    
-    // 2. Registramos el Service Worker aquí abajo
+    provideAuth(() => getAuth()),
+
+    // PWA: service worker solo en producción
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),
-      registrationStrategy: 'registerWhenStable:30000'
-    })
-  ]
+      registrationStrategy: 'registerWhenStable:30000',
+    }),
+  ],
 };

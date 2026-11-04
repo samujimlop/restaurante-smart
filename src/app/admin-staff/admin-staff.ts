@@ -1,42 +1,58 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Firestore, collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from '@angular/fire/firestore';
+import {
+  Firestore,
+  collection,
+  onSnapshot,
+  deleteDoc,
+  doc,
+  setDoc,
+  updateDoc,
+} from '@angular/fire/firestore';
+import {
+  AuthService,
+  PATRON_PIN,
+  PATRON_USUARIO,
+  PerfilEmpleado,
+  PermisosEmpleado,
+} from '../services/auth.service';
+
+type EmpleadoListado = PerfilEmpleado & { id: string };
+
+const PERMISOS_VACIOS: PermisosEmpleado = {
+  verVentas: false,
+  cobrarMesas: false,
+  verInventario: false,
+};
 
 @Component({
   selector: 'app-admin-staff',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
-  templateUrl: './admin-staff.html'
+  templateUrl: './admin-staff.html',
 })
 export class AdminStaffComponent implements OnInit {
-  private firestore: Firestore = inject(Firestore);
-  private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
+  private firestore = inject(Firestore);
+  private auth = inject(AuthService);
+  private cdr = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
 
-  empleados: any[] = [];
+  empleados: EmpleadoListado[] = [];
   mostrarModal = false;
-  editandoId: string | null = null; // NUEVO: Para saber a quién estamos editando
+  editandoId: string | null = null;
+  guardando = false;
+  errorMsg = '';
 
-  nuevoEmpleado = {
-    nombre: '',
-    usuario: '',
-    email: '',
-    rol: 'Camarero',
-    pin: '',
-    permisos: {
-      verVentas: false,
-      cobrarMesas: false,
-      verInventario: false
-    }
-  };
+  nuevoEmpleado = this.formularioVacio();
 
   ngOnInit() {
-    const ref = collection(this.firestore, 'usuarios');
-    onSnapshot(ref, (snap) => {
-      this.empleados = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const cancelar = onSnapshot(collection(this.firestore, 'usuarios'), (snap) => {
+      this.empleados = snap.docs.map((d) => ({ id: d.id, ...(d.data() as PerfilEmpleado) }));
       this.cdr.detectChanges();
     });
+    this.destroyRef.onDestroy(cancelar);
   }
 
   abrirModal() {
@@ -49,76 +65,104 @@ export class AdminStaffComponent implements OnInit {
     this.resetForm();
   }
 
-  // NUEVO: Función para rellenar el formulario con el empleado seleccionado
-  editarEmpleado(emp: any) {
+  editarEmpleado(emp: EmpleadoListado) {
+    this.resetForm();
     this.editandoId = emp.id;
     this.nuevoEmpleado = {
       nombre: emp.nombre || '',
       usuario: emp.usuario || '',
       email: emp.email || '',
       rol: emp.rol || 'Camarero',
-      pin: emp.pin || '',
-      // Si es un empleado antiguo y no tenía permisos, le creamos el bloque a false
-      permisos: emp.permisos || { verVentas: false, cobrarMesas: false, verInventario: false }
+      pin: '',
+      permisos: { ...PERMISOS_VACIOS, ...emp.permisos },
     };
     this.mostrarModal = true;
   }
 
   async guardarEmpleado() {
-    if (!this.nuevoEmpleado.nombre || !this.nuevoEmpleado.usuario || !this.nuevoEmpleado.pin) {
-      alert("Por favor, rellena Nombre, Usuario y PIN");
+    this.errorMsg = '';
+    const datos = this.nuevoEmpleado;
+    datos.usuario = datos.usuario.trim().toLowerCase();
+
+    if (!datos.nombre.trim()) {
+      this.errorMsg = 'Escribe el nombre del empleado.';
       return;
     }
-
-    if (this.nuevoEmpleado.rol === 'Gerente') {
-      this.nuevoEmpleado.permisos = { verVentas: true, cobrarMesas: true, verInventario: true };
+    if (!this.editandoId) {
+      if (!PATRON_USUARIO.test(datos.usuario)) {
+        this.errorMsg =
+          'Usuario de 3 a 30 caracteres: letras minúsculas, números, punto, guion o guion bajo.';
+        return;
+      }
+      if (!PATRON_PIN.test(datos.pin)) {
+        this.errorMsg = 'El PIN debe tener exactamente 6 cifras.';
+        return;
+      }
     }
 
+    const permisos =
+      datos.rol === 'Gerente'
+        ? { verVentas: true, cobrarMesas: true, verInventario: true }
+        : datos.permisos;
+
+    this.guardando = true;
     try {
       if (this.editandoId) {
-        // Si estamos editando, ACTUALIZAMOS
-        await updateDoc(doc(this.firestore, `usuarios/${this.editandoId}`), {
-          nombre: this.nuevoEmpleado.nombre,
-          usuario: this.nuevoEmpleado.usuario,
-          email: this.nuevoEmpleado.email,
-          rol: this.nuevoEmpleado.rol,
-          pin: this.nuevoEmpleado.pin,
-          permisos: this.nuevoEmpleado.permisos
+        await updateDoc(doc(this.firestore, 'usuarios', this.editandoId), {
+          nombre: datos.nombre.trim(),
+          email: datos.email,
+          rol: datos.rol,
+          permisos,
         });
       } else {
-        // Si es nuevo, CREAMOS
-        await addDoc(collection(this.firestore, 'usuarios'), {
-          nombre: this.nuevoEmpleado.nombre,
-          usuario: this.nuevoEmpleado.usuario,
-          email: this.nuevoEmpleado.email,
-          rol: this.nuevoEmpleado.rol,
-          pin: this.nuevoEmpleado.pin,
-          permisos: this.nuevoEmpleado.permisos,
-          fechaAlta: new Date()
+        // 1) Cuenta de Firebase Auth (el PIN es su contraseña y no se guarda en Firestore)
+        const uid = await this.auth.crearCuentaEmpleado(datos.usuario, datos.pin);
+        // 2) Perfil con el rol, en usuarios/{uid}
+        await setDoc(doc(this.firestore, 'usuarios', uid), {
+          nombre: datos.nombre.trim(),
+          usuario: datos.usuario,
+          email: datos.email,
+          rol: datos.rol,
+          permisos,
+          fechaAlta: new Date(),
         });
       }
       this.cerrarModal();
-    } catch (error) {
-      console.error("Error al guardar en Firebase:", error);
-      alert("Hubo un error al conectar con la base de datos.");
+    } catch (error: unknown) {
+      const codigo = (error as { code?: string })?.code;
+      this.errorMsg =
+        codigo === 'auth/email-already-in-use'
+          ? 'Ese nombre de usuario ya existe.'
+          : 'No se ha podido guardar. Revisa la conexión e inténtalo de nuevo.';
+      console.error('Error al guardar el empleado:', error);
+    } finally {
+      this.guardando = false;
+      this.cdr.detectChanges();
     }
   }
 
   async borrarEmpleado(id: string) {
+    // Al borrar el perfil, la cuenta de Auth deja de tener acceso: las reglas de
+    // Firestore exigen que exista usuarios/{uid}.
     if (confirm('¿Eliminar este acceso permanentemente?')) {
-      await deleteDoc(doc(this.firestore, `usuarios/${id}`));
+      await deleteDoc(doc(this.firestore, 'usuarios', id));
     }
   }
 
   resetForm() {
     this.editandoId = null;
-    this.nuevoEmpleado = {
+    this.errorMsg = '';
+    this.nuevoEmpleado = this.formularioVacio();
+  }
+
+  private formularioVacio() {
+    return {
       nombre: '',
       usuario: '',
       email: '',
       rol: 'Camarero',
       pin: '',
-      permisos: { verVentas: false, cobrarMesas: false, verInventario: false }
+      permisos: { ...PERMISOS_VACIOS },
     };
   }
 }

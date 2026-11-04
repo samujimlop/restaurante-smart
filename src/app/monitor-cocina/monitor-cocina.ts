@@ -2,16 +2,17 @@ import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angula
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Firestore, collection, query, onSnapshot, doc, updateDoc } from '@angular/fire/firestore';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { IaService } from '../services/ia.service';
 
 @Component({
   selector: 'app-monitor-cocina',
   standalone: true,
   imports: [CommonModule, RouterLink],
-  templateUrl: './monitor-cocina.html'
+  templateUrl: './monitor-cocina.html',
 })
 export class MonitorCocinaComponent implements OnInit, OnDestroy {
   private firestore: Firestore = inject(Firestore);
+  private ia = inject(IaService);
   private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
   private unsubscribe: any;
 
@@ -28,7 +29,7 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
     const q = query(collection(this.firestore, 'comandas'));
 
     this.unsubscribe = onSnapshot(q, (snapshot) => {
-      const todasBruto = snapshot.docs.map(d => {
+      const todasBruto = snapshot.docs.map((d) => {
         const data = d.data();
         const agrupados = new Map<string, any>();
         const itemsCrudos = data['items'] || [];
@@ -36,20 +37,20 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
         itemsCrudos.forEach((item: any) => {
           const cat = item.categoria ? item.categoria.toLowerCase().trim() : '';
           if (cat === 'bebidas' || cat === 'bebida' || cat === 'refrescos') {
-            return; 
+            return;
           }
 
           const estadoItem = item.estado || 'pendiente';
-          
+
           if (agrupados.has(item.name)) {
             const plato = agrupados.get(item.name);
             plato.cantidad += 1;
             if (estadoItem === 'listo') plato.listos += 1;
           } else {
-            agrupados.set(item.name, { 
-              name: item.name, 
-              cantidad: 1, 
-              listos: estadoItem === 'listo' ? 1 : 0 
+            agrupados.set(item.name, {
+              name: item.name,
+              cantidad: 1,
+              listos: estadoItem === 'listo' ? 1 : 0,
             });
           }
         });
@@ -57,20 +58,22 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
         const itemsParaCocina = Array.from(agrupados.values());
 
         if (itemsParaCocina.length === 0) {
-          return null; 
+          return null;
         }
 
         return {
           id: d.id,
           itemsOriginales: itemsCrudos,
           ...data,
-          itemsAgrupados: itemsParaCocina
-        } as any; 
+          itemsAgrupados: itemsParaCocina,
+        } as any;
       });
 
-      const todas = todasBruto.filter(c => c !== null);
+      const todas = todasBruto.filter((c) => c !== null);
 
-      this.comandasFuegos = todas.filter((c: any) => c.estado?.toLowerCase().trim() === 'preparando');
+      this.comandasFuegos = todas.filter(
+        (c: any) => c.estado?.toLowerCase().trim() === 'preparando',
+      );
       this.comandasPase = todas.filter((c: any) => c.estado?.toLowerCase().trim() === 'listo');
 
       this.comandasNuevas = todas.filter((c: any) => {
@@ -78,7 +81,7 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
         return est === 'pendiente' || est === 'recibido' || est === 'nuevo';
       });
 
-      this.cdr.detectChanges(); 
+      this.cdr.detectChanges();
     });
   }
 
@@ -92,7 +95,7 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
     try {
       await updateDoc(doc(this.firestore, 'comandas', comandaId), { estado: nuevoEstado });
     } catch (error) {
-      console.error("Error al actualizar estado general:", error);
+      console.error('Error al actualizar estado general:', error);
     }
   }
 
@@ -109,14 +112,14 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
 
       await updateDoc(doc(this.firestore, 'comandas', comanda.id), { items: itemsActualizados });
     } catch (error) {
-      console.error("Error al tachar el plato:", error);
+      console.error('Error al tachar el plato:', error);
     }
   }
 
   // --- LÓGICA DE GEMINI INTEGRADA ---
   async optimizarLoteIA() {
     if (this.comandasNuevas.length === 0) {
-      alert("No hay pedidos nuevos en cola para optimizar.");
+      alert('No hay pedidos nuevos en cola para optimizar.');
       return;
     }
 
@@ -125,12 +128,14 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
 
     try {
-      const genAI = new GoogleGenerativeAI('AQ.Ab8RN6K7WvnQKCxLujzdXoZT_0WEkZCeeKQgDakETY9vBxfb_w'); 
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
-      const datosParaIA = this.comandasNuevas.map(c => {
-        return `Mesa ${c.numeroMesa}: ` + c.itemsAgrupados.map((i: any) => `${i.cantidad}x ${i.name}`).join(', ');
-      }).join('\n');
+      const datosParaIA = this.comandasNuevas
+        .map((c) => {
+          return (
+            `Mesa ${c.numeroMesa}: ` +
+            c.itemsAgrupados.map((i: any) => `${i.cantidad}x ${i.name}`).join(', ')
+          );
+        })
+        .join('\n');
 
       const prompt = `Eres el Jefe de Cocina experto del restaurante.
       Analiza estos pedidos pendientes en tiempo real:
@@ -139,12 +144,10 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
       Redacta un plan muy directo de cómo agrupar los platos para cocinarlos a la vez (ej: qué meter junto a la freidora, qué a la plancha).
       Usa viñetas cortas. Sé profesional. No saludes, ve al grano.`;
 
-      const result = await model.generateContent(prompt);
-      this.respuestaIA = result.response.text();
+      this.respuestaIA = await this.ia.generar(prompt);
       this.mostrarModalIA = true;
-
     } catch (error) {
-      console.error("Error con Gemini:", error);
+      console.error('Error con Gemini:', error);
       this.respuestaIA = '❌ Error al conectar con la Inteligencia Artificial.';
       this.mostrarModalIA = true;
     } finally {

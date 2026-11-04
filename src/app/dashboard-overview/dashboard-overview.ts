@@ -1,6 +1,7 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router'; 
+import { Router, RouterLink } from '@angular/router';
+import { AuthService } from '../services/auth.service';
 import { Firestore, collection, onSnapshot, query } from '@angular/fire/firestore';
 
 @Component({
@@ -11,8 +12,10 @@ import { Firestore, collection, onSnapshot, query } from '@angular/fire/firestor
 })
 export class DashboardOverviewComponent implements OnInit {
     private firestore: Firestore = inject(Firestore);
+    private destroyRef = inject(DestroyRef);
     private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
     private router: Router = inject(Router);
+    private auth = inject(AuthService);
 
     // Estadísticas Reales
     totalMesas: number = 12;
@@ -28,24 +31,14 @@ export class DashboardOverviewComponent implements OnInit {
     esCocinero: boolean = false;
 
     ngOnInit() {
-        // 1. CONTROL DE ACCESO (Leer rol del usuario logueado)
-        const sesion = localStorage.getItem('usuarioLogueado');
-        if (sesion) {
-            const usuario = JSON.parse(sesion);
-            const rol = usuario.rol ? String(usuario.rol).toLowerCase() : '';
-            this.esAdmin = (rol === 'admin' || rol === 'administrador' || rol === 'jefe' || rol === 'gerente');
-            this.esStaff = (rol === 'staff' || rol === 'camarero');
-            this.esCocinero = (rol === 'cocinero' || rol === 'cocina');
-            
-            // Perfil por defecto de seguridad si el rol no coincide
-            if (!this.esAdmin && !this.esStaff && !this.esCocinero) {
-                this.esStaff = true; 
-            }
-        }
+        // 1. CONTROL DE ACCESO (el staffGuard ya ha cargado el perfil)
+        this.esAdmin = this.auth.esGerente();
+        this.esCocinero = this.auth.esCocina();
+        this.esStaff = !this.esAdmin && !this.esCocinero;
 
         // 2. ESCUCHA DE FIREBASE: COMANDAS (Mesas ocupadas)
         const qComandas = query(collection(this.firestore, 'comandas'));
-        onSnapshot(qComandas, (snap) => {
+        this.destroyRef.onDestroy(onSnapshot(qComandas, (snap) => {
             const activas = snap.docs
                 .map(d => d.data())
                 .filter((c: any) => c.estado !== 'Pagada');
@@ -53,13 +46,13 @@ export class DashboardOverviewComponent implements OnInit {
             this.mesasOcupadas = activas.length;
             this.porcentajeOcupacion = (this.mesasOcupadas / this.totalMesas) * 100;
             this.cdr.detectChanges();
-        });
+        }));
 
         // 3. ESCUCHA DE FIREBASE: INVENTARIO (Stock crítico)
         // Solo lanzamos esta consulta si el usuario es Admin (ahorro de lecturas)
         if (this.esAdmin) {
             const qInventario = query(collection(this.firestore, 'inventario'));
-            onSnapshot(qInventario, (snap) => {
+            this.destroyRef.onDestroy(onSnapshot(qInventario, (snap) => {
                 let criticos = 0;
                 snap.forEach(doc => {
                     const data = doc.data();
@@ -72,13 +65,13 @@ export class DashboardOverviewComponent implements OnInit {
                 });
                 this.alertasInventario = criticos;
                 this.cdr.detectChanges();
-            });
+            }));
         }
     }
 
     // Función para vaciar la sesión y volver al login
-    cerrarSesion() {
-        localStorage.removeItem('usuarioLogueado');
+    async cerrarSesion() {
+        await this.auth.logout();
         this.router.navigate(['/login']);
     }
 }

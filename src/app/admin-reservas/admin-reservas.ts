@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Firestore, collection, onSnapshot, doc, updateDoc, deleteDoc } from '@angular/fire/firestore';
@@ -11,6 +11,7 @@ import { Firestore, collection, onSnapshot, doc, updateDoc, deleteDoc } from '@a
 })
 export class AdminReservasComponent implements OnInit {
   private firestore: Firestore = inject(Firestore);
+  private destroyRef = inject(DestroyRef);
   private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
   
   listaReservas: any[] = [];
@@ -19,7 +20,7 @@ export class AdminReservasComponent implements OnInit {
     // Nos conectamos a la colección de reservas en tiempo real
     const ref = collection(this.firestore, 'reservas');
     
-    onSnapshot(ref, (snapshot) => {
+    this.destroyRef.onDestroy(onSnapshot(ref, (snapshot) => {
       const arrayTemporal: any[] = [];
       snapshot.forEach((documento) => {
         arrayTemporal.push({ id: documento.id, ...documento.data() });
@@ -33,7 +34,7 @@ export class AdminReservasComponent implements OnInit {
       });
       
       this.cdr.detectChanges();
-    }, (error) => console.error("Error al cargar reservas:", error));
+    }, (error) => console.error("Error al cargar reservas:", error)));
   }
 
   // Función para cambiar el estado de la reserva

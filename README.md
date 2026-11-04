@@ -1,59 +1,82 @@
 # RestauranteSmart
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.0.
+Aplicación web para la gestión integral de un restaurante, con asistentes de IA generativa (Gemini) para cocina e inventario. Funciona como PWA y sincroniza en tiempo real entre sala, cocina y gerencia.
 
-## Development server
+**Stack:** Angular 21 · TypeScript · Firebase (Authentication, Firestore, Hosting, AI Logic) · Gemini 2.5 Flash · Tailwind CSS
 
-To start a local development server, run:
+<p align="center">
+  <img src="docs/prototipos/dashboard_overview_smart_restaurant/screen.png" width="49%" alt="Panel de control">
+  <img src="docs/prototipos/smart_inventory_smart_restaurant/screen.png" width="49%" alt="Inventario inteligente">
+</p>
 
-```bash
-ng serve
-```
+## Funcionalidades
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+| Perfil | Módulo | Qué hace |
+|---|---|---|
+| Cliente | **Carta digital y reservas** | Consulta la carta en tiempo real y reserva mesa sin registrarse. |
+| Sala | **Mis mesas** | Abre comandas, añade platos y cobra la mesa. |
+| Cocina | **Monitor de cocina** | Cola de comandas en tiempo real. La IA propone cómo agrupar los platos pendientes por estación (freidora, plancha…). |
+| Personal | **Reservas** | Gestión y confirmación de las reservas recibidas. |
+| Gerencia | **Inventario inteligente** | Control de stock con alertas de nivel crítico y un informe de compra generado por IA. |
+| Gerencia | **Carta, personal y ventas** | Edición de platos, altas y roles de empleados, histórico de caja y ventas. |
 
-## Code scaffolding
+## Seguridad
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+La primera versión del proyecto tenía los fallos típicos de un prototipo: claves de API en el frontend, PINs en texto plano y permisos decididos en el navegador. Esta versión los corrige así:
 
-```bash
-ng generate component component-name
-```
+- **Sin secretos en el cliente.** Gemini se llama a través de **Firebase AI Logic**, que guarda la clave en el servidor. La configuración web de Firebase sí es pública por diseño, como en cualquier app de Firebase.
+- **Autenticación real.** Cada empleado entra con usuario + PIN mediante **Firebase Authentication**. El PIN es la contraseña de su cuenta, así que Firebase lo guarda con hash y limita los intentos. Nunca se guarda en Firestore.
+- **Autorización en el servidor.** Las [reglas de Firestore](firestore.rules) deciden qué colección puede leer o escribir cada rol (cliente, empleado, gerente) y validan las reservas que llegan de clientes anónimos. Los guards de Angular solo controlan la navegación, así que manipular el navegador no da acceso a los datos.
+- **Alta de empleados sin cerrar la sesión del gerente.** Se usa una instancia secundaria de Firebase Auth con persistencia en memoria.
+- **Sin fugas de memoria.** Todas las suscripciones en tiempo real (`onSnapshot`) se cancelan al destruir el componente mediante `DestroyRef`.
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Puesta en marcha
 
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+Requisitos: Node.js 20+ y un proyecto de Firebase.
 
 ```bash
-ng test
+npm install --legacy-peer-deps
+npm start            # http://localhost:4200
 ```
 
-## Running end-to-end tests
+Configuración del proyecto de Firebase:
 
-For end-to-end (e2e) testing, run:
+1. **Authentication → Sign-in method:** activar *Correo electrónico/contraseña*.
+2. **AI Logic:** activar el servicio con la *Gemini Developer API*.
+3. **Reglas de Firestore:** `npx firebase-tools deploy --only firestore:rules`
+4. **Primer gerente.** Las reglas impiden que alguien se asigne el rol a sí mismo, así que el primero se crea a mano:
+   - En *Authentication → Añadir usuario*, crear `<usuario>@restaurante-smart-c1de7.web.app` con un PIN de 6 cifras como contraseña.
+   - En *Firestore*, crear el documento `usuarios/<UID de ese usuario>` con `nombre`, `usuario` y `rol: "Gerente"`.
+   - A partir de ahí, el resto del equipo se da de alta desde *Gestión de personal*.
+
+Para desplegar:
 
 ```bash
-ng e2e
+npm run build
+npx firebase-tools deploy
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+## Estructura
 
-## Additional Resources
+```
+src/app/
+├── services/      AuthService (sesión y roles) e IaService (Gemini vía Firebase AI Logic)
+├── guards/        staffGuard y adminGuard
+├── carta/         Carta pública y reservas
+├── mis-mesas/     Comandas de sala
+├── monitor-cocina/
+├── smart-inventory/
+├── admin-*/       Módulos de gerencia (carta, personal, reservas, ventas)
+└── firebase.config.ts
+firestore.rules    Autorización por rol
+docs/prototipos/   Diseños iniciales de las pantallas
+```
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+## Próximos pasos
+
+- **Firebase App Check**, para que solo la app publicada pueda consumir la cuota de Gemini.
+- Tests unitarios de los servicios y tests de las reglas con el emulador de Firestore.
+
+---
+
+Proyecto académico del Grado en Ingeniería Informática (Universidad Europea de Madrid). Autor: [Samuel Jiménez López](https://github.com/samujimlop).

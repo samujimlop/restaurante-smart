@@ -1,0 +1,74 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore para RestauranteSmart.
+// La interfaz (guards de Angular) solo oculta pantallas; quien decide de verdad
+// qué puede leer o escribir cada usuario son estas reglas.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function rutaPerfil() {
+      return /databases/$(database)/documents/usuarios/$(request.auth.uid);
+    }
+
+    // Empleado = cuenta de Auth con perfil en usuarios/{uid}.
+    // Borrar el perfil revoca el acceso aunque la cuenta siga existiendo.
+    function esEmpleado() {
+      return autenticado() && exists(rutaPerfil());
+    }
+
+    function esGerente() {
+      return esEmpleado()
+        && get(rutaPerfil()).data.rol.lower() in ['gerente', 'admin', 'administrador', 'jefe'];
+    }
+
+    function reservaValida(r) {
+      return r.keys().hasOnly(['nombre', 'telefono', 'fecha', 'hora', 'personas', 'estado', 'fechaCreacion'])
+        && r.nombre is string && r.nombre.size() > 0 && r.nombre.size() <= 80
+        && r.telefono is string && r.telefono.size() <= 20
+        && r.fecha is string && r.fecha.size() > 0 && r.fecha.size() <= 20
+        && r.hora is string && r.hora.size() > 0 && r.hora.size() <= 10
+        && r.personas is number && r.personas >= 1 && r.personas <= 30
+        && r.estado == 'Pendiente'
+        && r.fechaCreacion is timestamp;
+    }
+
+    // Carta: pública para clientes; solo gerencia la modifica.
+    match /platos/{id} {
+      allow read: if true;
+      allow write: if esGerente();
+    }
+
+    // Reservas: cualquier cliente puede crear una (validada); solo el personal las ve y gestiona.
+    match /reservas/{id} {
+      allow create: if reservaValida(request.resource.data);
+      allow read, update, delete: if esEmpleado();
+    }
+
+    // Comandas: sala y cocina.
+    match /comandas/{id} {
+      allow read, write: if esEmpleado();
+    }
+
+    // Inventario y caja: solo gerencia.
+    match /inventario/{id} {
+      allow read, write: if esGerente();
+    }
+
+    match /operaciones_caja/{id} {
+      allow read, write: if esGerente();
+    }
+
+    // Perfiles: cada empleado lee el suyo; solo gerencia los crea, edita o borra.
+    // Un empleado no puede cambiarse su propio rol.
+    match /usuarios/{uid} {
+      allow read: if autenticado() && (request.auth.uid == uid || esGerente());
+      allow write: if esGerente();
+    }
+
+    // Todo lo demás, denegado.
+  }
+}

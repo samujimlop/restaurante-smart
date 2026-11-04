@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Firestore, collection, onSnapshot, query, addDoc, updateDoc, doc, getDocs } from '@angular/fire/firestore';
@@ -12,6 +12,7 @@ import { ToastService } from '../services/toast.service';
 })
 export class AdminMesasComponent implements OnInit {
   private firestore: Firestore = inject(Firestore);
+  private destroyRef = inject(DestroyRef);
   private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
   private toast = inject(ToastService);
 
@@ -49,7 +50,7 @@ export class AdminMesasComponent implements OnInit {
     }
 
     const q = query(collection(this.firestore, 'comandas'));
-    onSnapshot(q, (snap) => {
+    this.destroyRef.onDestroy(onSnapshot(q, (snap) => {
       this.mesas.forEach(m => m.comanda = null);
       snap.docs.forEach(d => {
         const data = d.data() as any;
@@ -61,7 +62,7 @@ export class AdminMesasComponent implements OnInit {
         }
       });
       this.cdr.detectChanges();
-    });
+    }));
   }
 
   toggleCategoria(categoria: string) {
