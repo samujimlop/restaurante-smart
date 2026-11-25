@@ -1,7 +1,8 @@
 import { Component, OnInit, inject, ChangeDetectorRef, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { Firestore, collection, onSnapshot, doc, updateDoc, deleteDoc } from '@angular/fire/firestore';
+import { Firestore, collection, onSnapshot, doc, updateDoc, deleteDoc, query, where } from '@angular/fire/firestore';
+import { ToastService } from '../services/toast.service';
 
 @Component({
   selector: 'app-admin-reservas',
@@ -13,12 +14,15 @@ export class AdminReservasComponent implements OnInit {
   private firestore: Firestore = inject(Firestore);
   private destroyRef = inject(DestroyRef);
   private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
+  private toast = inject(ToastService);
   
   listaReservas: any[] = [];
 
   ngOnInit() {
-    // Nos conectamos a la colección de reservas en tiempo real
-    const ref = collection(this.firestore, 'reservas');
+    // Reservas desde hace una semana en adelante (las antiguas no hace falta descargarlas).
+    // La fecha se guarda como texto 'AAAA-MM-DD', que se ordena igual que la fecha.
+    const haceUnaSemana = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const ref = query(collection(this.firestore, 'reservas'), where('fecha', '>=', haceUnaSemana));
     
     this.destroyRef.onDestroy(onSnapshot(ref, (snapshot) => {
       const arrayTemporal: any[] = [];
@@ -26,7 +30,7 @@ export class AdminReservasComponent implements OnInit {
         arrayTemporal.push({ id: documento.id, ...documento.data() });
       });
       
-      // Ordenamos para que las reservas más recientes salgan primero
+      // Por fecha y hora: las más próximas primero
       this.listaReservas = arrayTemporal.sort((a, b) => {
         if (a.fecha > b.fecha) return 1;
         if (a.fecha < b.fecha) return -1;
@@ -43,13 +47,18 @@ export class AdminReservasComponent implements OnInit {
       await updateDoc(doc(this.firestore, `reservas/${id}`), { estado: nuevoEstado });
     } catch (error) {
       console.error("Error al actualizar estado:", error);
+      this.toast.show('No se ha podido actualizar la reserva', 'error');
     }
   }
 
   // Función para eliminar definitivamente
   async borrarReserva(id: string) {
-    if (confirm("¿Estás seguro de que quieres borrar esta reserva del sistema?")) {
+    if (!confirm("¿Estás seguro de que quieres borrar esta reserva del sistema?")) return;
+    try {
       await deleteDoc(doc(this.firestore, `reservas/${id}`));
+    } catch (error) {
+      console.error("Error al borrar la reserva:", error);
+      this.toast.show('No se ha podido borrar la reserva', 'error');
     }
   }
-}
+}

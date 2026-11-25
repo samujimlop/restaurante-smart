@@ -11,10 +11,10 @@ import {
   deleteDoc,
   updateDoc,
   increment,
-  getDocs,
   writeBatch,
 } from '@angular/fire/firestore';
 import { IaService } from '../services/ia.service';
+import { ToastService } from '../services/toast.service';
 
 @Component({
   selector: 'app-smart-inventory',
@@ -25,6 +25,7 @@ import { IaService } from '../services/ia.service';
 export class SmartInventory implements OnInit {
   private firestore: Firestore = inject(Firestore);
   private ia = inject(IaService);
+  private toast = inject(ToastService);
   private destroyRef = inject(DestroyRef);
   private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
 
@@ -51,141 +52,67 @@ export class SmartInventory implements OnInit {
     salePrice: null as number | null,
   };
 
-  private yaSembrado = false;
-
   async ngOnInit() {
-    const ref = collection(this.firestore, 'inventario');
-
-    try {
-      const primerCheck = await getDocs(ref);
-      if (primerCheck.empty && !this.yaSembrado) {
-        this.yaSembrado = true;
-        const productosBase = [
-          {
-            name: 'Barril Cerveza Mahou',
-            category: 'Bebidas',
-            target: 10,
-            unit: 'uds',
-            purchasePrice: 50.0,
-            salePrice: 150.0,
-            stock: 2,
-          },
-          {
-            name: 'Jamón Ibérico',
-            category: 'Carnes',
-            target: 5,
-            unit: 'kg',
-            purchasePrice: 45.0,
-            salePrice: 120.0,
-            stock: 4,
-          },
-          {
-            name: 'Queso Manchego Curado',
-            category: 'Lácteos',
-            target: 8,
-            unit: 'kg',
-            purchasePrice: 14.5,
-            salePrice: 40.0,
-            stock: 1,
-          },
-          {
-            name: 'Patatas Agrias (Bravas)',
-            category: 'Vegetales',
-            target: 50,
-            unit: 'kg',
-            purchasePrice: 0.8,
-            salePrice: 6.5,
-            stock: 45,
-          },
-          {
-            name: 'Anillas de Calamar',
-            category: 'Pescados',
-            target: 15,
-            unit: 'kg',
-            purchasePrice: 9.2,
-            salePrice: 28.0,
-            stock: 12,
-          },
-          {
-            name: 'Aceite de Oliva Virgen',
-            category: 'Despensa',
-            target: 20,
-            unit: 'L',
-            purchasePrice: 8.5,
-            salePrice: 0,
-            stock: 18,
-          },
-          {
-            name: 'Pan Rústico (Hogaza)',
-            category: 'Despensa',
-            target: 40,
-            unit: 'uds',
-            purchasePrice: 0.9,
-            salePrice: 2.5,
-            stock: 5,
-          },
-          {
-            name: 'Vino Tinto Rioja Crianza',
-            category: 'Bebidas',
-            target: 30,
-            unit: 'uds',
-            purchasePrice: 6.5,
-            salePrice: 18.0,
-            stock: 25,
-          },
-        ];
-
-        for (const prod of productosBase) {
-          await addDoc(ref, { ...prod, component: '' });
-        }
-      }
-    } catch (error) {}
-
+    // (Antes, si el inventario estaba vacío se rellenaba solo con productos de
+    // ejemplo. En producción eso mete datos falsos y puede duplicarlos si dos
+    // personas abren la pantalla a la vez, así que se ha quitado.)
     this.destroyRef.onDestroy(
-      onSnapshot(ref, (snapshot) => {
-        const arrayTemporal: any[] = [];
-        snapshot.forEach((documento) => {
-          arrayTemporal.push({ id: documento.id, ...documento.data() });
-        });
-
-        this.listaProductos = arrayTemporal;
-        this.productosCriticos = this.listaProductos.filter((p) => p.stock < p.target * 0.2);
-
-        this.cdr.detectChanges();
-      }),
+      onSnapshot(
+        collection(this.firestore, 'inventario'),
+        (snapshot) => {
+          this.listaProductos = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+          this.productosCriticos = this.listaProductos.filter((p) => p.stock < p.target * 0.2);
+          this.cdr.detectChanges();
+        },
+        (error) => {
+          console.error('Error al cargar el inventario:', error);
+          this.toast.show('No se ha podido cargar el inventario', 'error');
+        },
+      ),
     );
   }
 
   async sumarStock(item: any) {
     // Stock y gasto en un solo lote: o se guardan los dos o ninguno, y la caja cuadra.
+    // itemId permite a las reglas comprobar que el importe es el precio de compra.
     const lote = writeBatch(this.firestore);
     lote.update(doc(this.firestore, `inventario/${item.id}`), { stock: increment(1) });
     const coste = Number(item.purchasePrice) || 0;
     if (coste > 0) {
       lote.set(doc(collection(this.firestore, 'operaciones_caja')), {
         concepto: `Reposición almacén: ${item.name}`,
-        monto: coste,
+        monto: item.purchasePrice,
         tipo: 'Gasto',
         fecha: new Date(),
         esComanda: false,
+        itemId: item.id,
       });
     }
     try {
       await lote.commit();
     } catch (error) {
       console.error('Error al reponer stock:', error);
+      this.toast.show('No se ha podido reponer el stock', 'error');
     }
   }
 
   async restarStock(item: any) {
-    if (item.stock > 0) {
+    if (!(item.stock > 0)) return;
+    try {
       await updateDoc(doc(this.firestore, `inventario/${item.id}`), { stock: increment(-1) });
+    } catch (error) {
+      console.error('Error al restar stock:', error);
+      this.toast.show('No se ha podido actualizar el stock', 'error');
     }
   }
 
   async borrar(id: string) {
-    if (confirm('¿Borrar?')) {
+    if (!confirm('¿Borrar este producto del inventario?')) return;
+    try {
       await deleteDoc(doc(this.firestore, `inventario/${id}`));
+    } catch (error) {
+      console.error('Error al borrar el producto:', error);
+      this.toast.show('No se ha podido borrar el producto', 'error');
     }
   }
 
@@ -240,8 +167,10 @@ export class SmartInventory implements OnInit {
   }
 
   async guardarNuevo() {
-    if (!this.nuevoProducto.name) return;
-    this.cerrar();
+    if (!this.nuevoProducto.name?.trim()) {
+      this.toast.show('Escribe el nombre del producto', 'error');
+      return;
+    }
     try {
       if (this.editandoId) {
         await updateDoc(doc(this.firestore, `inventario/${this.editandoId}`), {
@@ -265,8 +194,14 @@ export class SmartInventory implements OnInit {
           stock: 0,
         });
       }
+      // Solo se cierra el formulario cuando se ha guardado de verdad.
+      this.cerrar();
       this.resetearFormulario();
-    } catch (e) {}
+      this.toast.show('Producto guardado', 'success');
+    } catch (error) {
+      console.error('Error al guardar el producto:', error);
+      this.toast.show('No se ha podido guardar. Revisa la conexión.', 'error');
+    }
   }
 
   resetearFormulario() {

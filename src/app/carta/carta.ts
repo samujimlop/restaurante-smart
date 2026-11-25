@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Firestore, collection, getDocs, addDoc } from '@angular/fire/firestore';
+import { ToastService } from '../services/toast.service';
 
 @Component({
   selector: 'app-carta',
@@ -13,6 +14,13 @@ import { Firestore, collection, getDocs, addDoc } from '@angular/fire/firestore'
 export class CartaComponent implements OnInit {
   private firestore: Firestore = inject(Firestore);
   private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
+  private toast = inject(ToastService);
+
+  /** Hoy en formato 'AAAA-MM-DD' (hora local), para no aceptar reservas en el pasado. */
+  readonly hoy = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
 
   platos: any[] = [];
   categorias: string[] = [];
@@ -58,8 +66,12 @@ export class CartaComponent implements OnInit {
   }
 
   async enviarReserva() {
-    if (!this.nuevaReserva.nombre || !this.nuevaReserva.fecha || !this.nuevaReserva.hora) {
-      alert('Por favor, rellena los campos obligatorios (*)');
+    if (!this.nuevaReserva.nombre.trim() || !this.nuevaReserva.fecha || !this.nuevaReserva.hora) {
+      this.toast.show('Rellena los campos obligatorios (*)', 'error');
+      return;
+    }
+    if (this.nuevaReserva.fecha < this.hoy) {
+      this.toast.show('La fecha de la reserva no puede ser anterior a hoy', 'error');
       return;
     }
 
@@ -70,12 +82,12 @@ export class CartaComponent implements OnInit {
         fechaCreacion: new Date()
       });
       
-      alert('¡Reserva confirmada con éxito!');
+      this.toast.show('¡Reserva enviada! Te esperamos.', 'success');
       this.cerrarReserva();
       this.nuevaReserva = { nombre: '', telefono: '', fecha: '', hora: '', personas: 1 };
     } catch (error) {
       console.error("Error al guardar reserva:", error);
-      alert('Hubo un error al procesar la reserva.');
+      this.toast.show('No se ha podido enviar la reserva. Inténtalo de nuevo.', 'error');
     }
   }
-}
+}

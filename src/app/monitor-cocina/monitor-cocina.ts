@@ -1,7 +1,8 @@
 import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { Firestore, collection, query, onSnapshot, doc, updateDoc } from '@angular/fire/firestore';
+import { Firestore, collection, query, onSnapshot, doc, updateDoc, where } from '@angular/fire/firestore';
+import { ToastService } from '../services/toast.service';
 import { IaService } from '../services/ia.service';
 import { ItemComanda, actualizarItems, esBebida, sacarDeCocina } from '../services/comandas';
 
@@ -14,6 +15,7 @@ import { ItemComanda, actualizarItems, esBebida, sacarDeCocina } from '../servic
 export class MonitorCocinaComponent implements OnInit, OnDestroy {
   private firestore: Firestore = inject(Firestore);
   private ia = inject(IaService);
+  private toast = inject(ToastService);
   private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
   private unsubscribe: any;
 
@@ -27,7 +29,11 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
   respuestaIA: string = '';
 
   ngOnInit() {
-    const q = query(collection(this.firestore, 'comandas'));
+    // Solo las comandas que están en cocina (las tres columnas del monitor).
+    const q = query(
+      collection(this.firestore, 'comandas'),
+      where('estado', 'in', ['nuevo', 'pendiente', 'recibido', 'preparando', 'listo']),
+    );
 
     this.unsubscribe = onSnapshot(q, (snapshot) => {
       const todasBruto = snapshot.docs.map((d) => {
@@ -111,6 +117,7 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
       }
     } catch (error) {
       console.error('Error al actualizar estado general:', error);
+      this.toast.show('No se ha podido actualizar la comanda', 'error');
     }
   }
 
@@ -125,13 +132,14 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
       );
     } catch (error) {
       console.error('Error al tachar el plato:', error);
+      this.toast.show('No se ha podido marcar el plato', 'error');
     }
   }
 
   // --- LÓGICA DE GEMINI INTEGRADA ---
   async optimizarLoteIA() {
     if (this.comandasNuevas.length === 0) {
-      alert('No hay pedidos nuevos en cola para optimizar.');
+      this.toast.show('No hay pedidos nuevos en cola para optimizar', 'info');
       return;
     }
 

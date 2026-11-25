@@ -2,8 +2,14 @@ import { Component, OnInit, inject, ChangeDetectorRef, OnDestroy } from '@angula
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { Firestore, collection, onSnapshot, query, addDoc } from '@angular/fire/firestore';
+import { Firestore, collection, onSnapshot, query, addDoc, where } from '@angular/fire/firestore';
 import { AuthService } from '../services/auth.service';
+import { IaService } from '../services/ia.service';
+import { ToastService } from '../services/toast.service';
+import { sumarEuros } from '../services/comandas';
+
+/** El historial abarca los últimos 12 meses: así no se descarga toda la vida del restaurante. */
+const MESES_HISTORIAL = 12;
 
 /** Cómo se muestra el método de pago; las comandas antiguas no lo tienen y salen como "TPV". */
 const ETIQUETA_METODO: Record<string, string> = { efectivo: 'Efectivo', tarjeta: 'Tarjeta' };
@@ -18,6 +24,8 @@ export class AdminVentasComponent implements OnInit, OnDestroy {
   private firestore: Firestore = inject(Firestore);
   private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
   readonly esGerente = inject(AuthService).esGerente;
+  private ia = inject(IaService);
+  private toast = inject(ToastService);
 
   // Control de interfaz
   modoVista: 'hoy' | 'historial' = 'hoy';
@@ -50,7 +58,11 @@ export class AdminVentasComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     // 1. ESCUCHA 1: Movimientos manuales
-    const qManuales = query(collection(this.firestore, 'operaciones_caja'));
+    const desde = new Date();
+    desde.setMonth(desde.getMonth() - MESES_HISTORIAL);
+    desde.setHours(0, 0, 0, 0);
+
+    const qManuales = query(collection(this.firestore, 'operaciones_caja'), where('fecha', '>=', desde));
     this.unsubscribeManuales = onSnapshot(qManuales, (snap) => {
       this.operacionesManuales = snap.docs.map(d => ({
         id: d.id,
@@ -61,7 +73,8 @@ export class AdminVentasComponent implements OnInit, OnDestroy {
     });
 
     // 2. ESCUCHA 2: Comandas cerradas desde el TPV
-    const qComandas = query(collection(this.firestore, 'comandas'));
+    // Solo las comandas pagadas tienen fechaFinalizacion: este filtro descarta las abiertas y las antiguas.
+    const qComandas = query(collection(this.firestore, 'comandas'), where('fechaFinalizacion', '>=', desde));
     this.unsubscribeComandas = onSnapshot(qComandas, (snap) => {
       this.comandasPagadas = snap.docs
         .map(d => ({ id: d.id, ...d.data() }))
@@ -99,9 +112,9 @@ export class AdminVentasComponent implements OnInit, OnDestroy {
       return this.obtenerMilisegundos(b.fecha) - this.obtenerMilisegundos(a.fecha);
     });
 
-    this.totalIngresos = this.operacionesAnidadas.filter(o => o.tipo === 'Ingreso').reduce((acc, o) => acc + o.monto, 0);
-    this.totalGastos = this.operacionesAnidadas.filter(o => o.tipo === 'Gasto').reduce((acc, o) => acc + o.monto, 0);
-    this.balanceTotal = this.totalIngresos - this.totalGastos;
+    this.totalIngresos = sumarEuros(this.operacionesAnidadas.filter(o => o.tipo === 'Ingreso').map(o => o.monto));
+    this.totalGastos = sumarEuros(this.operacionesAnidadas.filter(o => o.tipo === 'Gasto').map(o => o.monto));
+    this.balanceTotal = sumarEuros([this.totalIngresos, -this.totalGastos]);
 
     // --- 2. PROCESAMIENTO VISTA HISTORIAL ---
     this.agruparHistorial(todas);
@@ -137,13 +150,13 @@ export class AdminVentasComponent implements OnInit, OnDestroy {
       mesRef.operaciones.push(op);
       
       if (op.tipo === 'Ingreso') {
-        mesRef.ingresos += op.monto;
-        agrupado[ano].totalAno += op.monto;
+        mesRef.ingresos = sumarEuros([mesRef.ingresos, op.monto]);
+        agrupado[ano].totalAno = sumarEuros([agrupado[ano].totalAno, op.monto]);
       } else {
-        mesRef.gastos += op.monto;
-        agrupado[ano].totalAno -= op.monto;
+        mesRef.gastos = sumarEuros([mesRef.gastos, op.monto]);
+        agrupado[ano].totalAno = sumarEuros([agrupado[ano].totalAno, -op.monto]);
       }
-      mesRef.balance = mesRef.ingresos - mesRef.gastos;
+      mesRef.balance = sumarEuros([mesRef.ingresos, -mesRef.gastos]);
     });
 
     // Convertimos el objeto en array ordenado descendente (2026, 2025...)
@@ -183,20 +196,45 @@ export class AdminVentasComponent implements OnInit, OnDestroy {
       // No hace falta detectChanges manual, Firestore lanzará el onSnapshot al guardar
     } catch (error) {
       console.error("Error al registrar operación manual:", error);
+      this.toast.show('No se ha podido registrar el movimiento', 'error');
     }
   }
 
-  generarAnalisisIA() {
+  /** Pide a Gemini un análisis de la caja de hoy comparada con los meses anteriores. */
+  async generarAnalisisIA() {
     this.cargandoIA = true;
     this.analisisIA = '';
     this.cdr.detectChanges();
 
-    setTimeout(() => {
-      const ticketsHoy = this.operacionesAnidadas.filter(o => o.esComanda).length;
-      this.analisisIA = `Análisis Diario: Caja consolidada. Se han detectado ${ticketsHoy} mesas cerradas hoy con un balance total neto de ${this.balanceTotal.toFixed(2)}€. La actividad muestra un rendimiento óptimo acorde a la capacidad de la sala.`;
+    const euros = (n: number) => `${n.toFixed(2)}€`;
+    const movimientosHoy = this.operacionesAnidadas
+      .map((o) => `- ${o.tipo}: ${o.concepto} (${euros(o.monto)})`)
+      .join('\n');
+    const meses = this.historialAgrupado
+      .flatMap((a: any) => a.mesesArr.map((m: any) =>
+        `- ${m.nombre} ${a.ano}: ingresos ${euros(m.ingresos)}, gastos ${euros(m.gastos)}, balance ${euros(m.balance)}`))
+      .join('\n');
+
+    const prompt = `Eres el asesor financiero de un restaurante.
+      Caja de hoy (${this.fechaHoyStr}): ingresos ${euros(this.totalIngresos)}, gastos ${euros(this.totalGastos)}, balance ${euros(this.balanceTotal)}.
+      Movimientos de hoy:
+      ${movimientosHoy || '- (ninguno)'}
+
+      Resumen de los últimos meses:
+      ${meses || '- (sin datos)'}
+
+      Redacta un análisis de máximo 4 líneas: cómo va el día frente a lo habitual, qué gasto o patrón destaca
+      y una recomendación concreta. Usa solo los datos que te doy; si son pocos, dilo. Texto plano, sin saludos.`;
+
+    try {
+      this.analisisIA = await this.ia.generar(prompt);
+    } catch (error) {
+      console.error('Error con Gemini:', error);
+      this.analisisIA = '❌ No se ha podido conectar con la IA. Inténtalo de nuevo en unos minutos.';
+    } finally {
       this.cargandoIA = false;
       this.cdr.detectChanges();
-    }, 2000);
+    }
   }
 
   imprimirZ() {

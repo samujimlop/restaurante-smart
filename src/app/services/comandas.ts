@@ -44,10 +44,15 @@ export function estadoTrasAnadir(estadoActual: string | undefined, item: ItemCom
   return fuera && !esBebida(item) ? 'nuevo' : null;
 }
 
-/** Suma los precios redondeando a céntimos (evita totales tipo 12.300000000000001). */
-export function calcularTotal(items: ItemComanda[]): number {
-  const centimos = items.reduce((acc, item) => acc + Math.round((Number(item.price) || 0) * 100), 0);
+/** Suma importes en céntimos (evita totales tipo 12.300000000000001). */
+export function sumarEuros(importes: unknown[]): number {
+  const centimos = importes.reduce<number>((acc, v) => acc + Math.round((Number(v) || 0) * 100), 0);
   return centimos / 100;
+}
+
+/** Total de una comanda. */
+export function calcularTotal(items: ItemComanda[]): number {
+  return sumarEuros(items.map((item) => item.price));
 }
 
 /**

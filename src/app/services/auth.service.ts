@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Auth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from '@angular/fire/auth';
-import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+import { Firestore, doc, getDoc, onSnapshot } from '@angular/fire/firestore';
 import { getApps, initializeApp } from 'firebase/app';
 import {
   Auth as AuthFirebase,
@@ -47,6 +47,8 @@ export class AuthService {
   private firestore = inject(Firestore);
 
   readonly perfil = signal<PerfilEmpleado | null>(null);
+  /** uid de la cuenta con sesión iniciada (para que un gerente no se borre a sí mismo). */
+  readonly uid = signal<string | null>(null);
   readonly rol = computed(() => (this.perfil()?.rol ?? '').toLowerCase());
   readonly esGerente = computed(() => ROLES_GERENCIA.includes(this.rol()));
   readonly esCocina = computed(() => ROLES_COCINA.includes(this.rol()));
@@ -58,13 +60,37 @@ export class AuthService {
 
   private readonly sesionInicial: Promise<void>;
   private authAltas?: AuthFirebase;
+  private dejarDeEscucharPerfil?: () => void;
 
   constructor() {
-    this.sesionInicial = new Promise((resolve) => {
-      onAuthStateChanged(this.auth, async (user) => {
-        this.perfil.set(user ? await this.cargarPerfil(user.uid) : null);
-        resolve();
-      });
+    let sesionLista!: () => void;
+    this.sesionInicial = new Promise((resolve) => (sesionLista = resolve));
+
+    onAuthStateChanged(this.auth, (user) => {
+      this.dejarDeEscucharPerfil?.();
+      this.dejarDeEscucharPerfil = undefined;
+      this.uid.set(user?.uid ?? null);
+
+      if (!user) {
+        this.perfil.set(null);
+        sesionLista();
+        return;
+      }
+
+      // El perfil se escucha en directo: si gerencia cambia el rol o los permisos
+      // (o borra el perfil), la interfaz se actualiza sin tener que recargar.
+      this.dejarDeEscucharPerfil = onSnapshot(
+        doc(this.firestore, 'usuarios', user.uid),
+        (snap) => {
+          this.perfil.set(snap.exists() ? (snap.data() as PerfilEmpleado) : null);
+          sesionLista();
+        },
+        () => {
+          // Acceso revocado: las reglas deniegan la lectura del perfil.
+          this.perfil.set(null);
+          sesionLista();
+        },
+      );
     });
   }
 

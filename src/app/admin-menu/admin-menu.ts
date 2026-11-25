@@ -2,8 +2,21 @@ import { Component, OnInit, inject, ChangeDetectorRef, DestroyRef } from '@angul
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Firestore, collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc } from '@angular/fire/firestore';
+import {
+  Firestore,
+  collection,
+  onSnapshot,
+  doc,
+  deleteField,
+  writeBatch,
+} from '@angular/fire/firestore';
+import { ToastService } from '../services/toast.service';
 
+/**
+ * Los platos (colección `platos`) son públicos: la carta los lee sin iniciar
+ * sesión. El coste de escandallo es información interna, así que vive aparte,
+ * en `platos_costes/{idPlato}`, que solo gerencia puede leer (firestore.rules).
+ */
 @Component({
   selector: 'app-admin-menu',
   standalone: true,
@@ -14,6 +27,7 @@ export class AdminMenuComponent implements OnInit {
   private firestore: Firestore = inject(Firestore);
   private destroyRef = inject(DestroyRef);
   private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
+  private toast = inject(ToastService);
 
   listaPlatos: any[] = [];
   mostrarModal = false;
@@ -22,30 +36,57 @@ export class AdminMenuComponent implements OnInit {
   categorias = ['Entrantes', 'Principales', 'Postres', 'Bebidas'];
   opcionesAllergens = ['Gluten', 'Lactosa', 'Huevo', 'Pescado', 'Frutos Cáscara', 'Soja', 'Crustáceos', 'Mostaza'];
 
-  nuevoPlato: any = {
-    name: '',
-    description: '',
-    price: 0,
-    costPrice: 0,
-    category: 'Entrantes',
-    allergens: []
-  };
+  nuevoPlato: any = this.platoVacio();
+
+  private platos: any[] = [];
+  private costes = new Map<string, number>();
 
   ngOnInit() {
-    const ref = collection(this.firestore, 'platos');
-    this.destroyRef.onDestroy(onSnapshot(ref, (snapshot) => {
-      const arrayTemporal: any[] = [];
-      snapshot.forEach((documento) => {
+    this.destroyRef.onDestroy(onSnapshot(collection(this.firestore, 'platos'), (snapshot) => {
+      this.platos = snapshot.docs.map((documento) => {
         const data = documento.data();
-        arrayTemporal.push({
+        return {
           id: documento.id,
           ...data,
           allergens: Array.isArray(data['allergens']) ? data['allergens'] : []
-        });
+        };
       });
-      this.listaPlatos = arrayTemporal;
-      this.cdr.detectChanges();
+      this.migrarCostesPublicos();
+      this.combinar();
     }));
+
+    this.destroyRef.onDestroy(onSnapshot(collection(this.firestore, 'platos_costes'), (snapshot) => {
+      this.costes = new Map(snapshot.docs.map((d) => [d.id, Number(d.data()['costPrice']) || 0]));
+      this.combinar();
+    }));
+  }
+
+  /** Une cada plato con su coste privado para mostrarlos juntos en la tabla. */
+  private combinar() {
+    this.listaPlatos = this.platos.map((p) => ({
+      ...p,
+      costPrice: this.costes.get(p.id) ?? p.costPrice ?? 0,
+    }));
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Platos creados antes de separar los costes: todavía guardan `costPrice` en el
+   * documento público. Se mueve a `platos_costes` y se borra del plato.
+   */
+  private async migrarCostesPublicos() {
+    const pendientes = this.platos.filter((p) => p.costPrice !== undefined);
+    if (pendientes.length === 0) return;
+    const lote = writeBatch(this.firestore);
+    for (const plato of pendientes) {
+      lote.set(doc(this.firestore, 'platos_costes', plato.id), { costPrice: Number(plato.costPrice) || 0 });
+      lote.update(doc(this.firestore, 'platos', plato.id), { costPrice: deleteField() });
+    }
+    try {
+      await lote.commit();
+    } catch (error) {
+      console.error('Error al mover los costes a platos_costes:', error);
+    }
   }
 
   toggleAllergen(alergeno: string) {
@@ -66,63 +107,71 @@ export class AdminMenuComponent implements OnInit {
   editar(plato: any) {
     this.editandoId = plato.id;
     this.nuevoPlato = {
-      ...plato,
+      name: plato.name ?? '',
+      description: plato.description ?? '',
+      price: plato.price ?? null,
+      costPrice: plato.costPrice ?? null,
+      category: plato.category ?? 'Entrantes',
       allergens: Array.isArray(plato.allergens) ? [...plato.allergens] : []
     };
     this.mostrarModal = true;
   }
 
   async guardar() {
-    if (!this.nuevoPlato.name || !this.nuevoPlato.price) return alert("Nombre y precio obligatorios");
+    const precio = Number(this.nuevoPlato.price);
+    if (!this.nuevoPlato.name?.trim() || !(precio > 0)) {
+      this.toast.show('Nombre y precio obligatorios', 'error');
+      return;
+    }
+
+    // Datos públicos del plato (sin id ni coste) y coste privado, en un solo lote.
+    const publico = {
+      name: this.nuevoPlato.name.trim(),
+      description: this.nuevoPlato.description ?? '',
+      price: precio,
+      category: this.nuevoPlato.category,
+      allergens: this.nuevoPlato.allergens ?? [],
+    };
+    const refPlato = this.editandoId
+      ? doc(this.firestore, 'platos', this.editandoId)
+      : doc(collection(this.firestore, 'platos'));
+
+    const lote = writeBatch(this.firestore);
+    lote.set(refPlato, publico, { merge: true });
+    lote.set(doc(this.firestore, 'platos_costes', refPlato.id), {
+      costPrice: Number(this.nuevoPlato.costPrice) || 0,
+    });
+
     try {
-      if (this.editandoId) {
-        await updateDoc(doc(this.firestore, `platos/${this.editandoId}`), this.nuevoPlato);
-      } else {
-        await addDoc(collection(this.firestore, 'platos'), this.nuevoPlato);
-      }
+      await lote.commit();
       this.cerrar();
-    } catch (e) { console.error(e); }
+      this.toast.show('Plato guardado', 'success');
+    } catch (e) {
+      console.error('Error al guardar el plato:', e);
+      this.toast.show('No se ha podido guardar el plato', 'error');
+    }
   }
 
   cerrar() { this.mostrarModal = false; }
 
   async borrar(id: string) {
-    if (confirm("¿Eliminar este plato del menú?")) {
-      await deleteDoc(doc(this.firestore, `platos/${id}`));
+    if (!confirm("¿Eliminar este plato del menú?")) return;
+    const lote = writeBatch(this.firestore);
+    lote.delete(doc(this.firestore, 'platos', id));
+    lote.delete(doc(this.firestore, 'platos_costes', id));
+    try {
+      await lote.commit();
+    } catch (e) {
+      console.error('Error al borrar el plato:', e);
+      this.toast.show('No se ha podido borrar el plato', 'error');
     }
   }
 
   resetearForm() {
-    this.nuevoPlato = { name: '', description: '', price: null, costPrice: null, category: 'Entrantes', allergens: [] };
+    this.nuevoPlato = this.platoVacio();
   }
 
-  // ==========================================
-  // 🚀 SCRIPT INYECTOR DE MENÚ (DATA SEEDER)
-  // ==========================================
-  async generarMenuMagico() {
-    const confirmar = confirm("¿Quieres inyectar una carta completa de prueba con sus costes de escandallo?");
-    if (!confirmar) return;
-
-    const cartaSimulada = [
-      { name: 'Nachos con Queso', description: 'Totopos bañados en cheddar fundido, guacamole casero y jalapeños.', price: 8.50, costPrice: 2.10, category: 'Entrantes', allergens: ['Lactosa', 'Gluten'] },
-      { name: 'Croquetas Ibéricas', description: 'Ración de 6 croquetas caseras extra cremosas.', price: 9.00, costPrice: 2.50, category: 'Entrantes', allergens: ['Gluten', 'Lactosa', 'Huevo'] },
-      { name: 'Hamburguesa Trufada', description: '200g de ternera, queso brie, rúcula y mayonesa de trufa.', price: 14.50, costPrice: 4.80, category: 'Principales', allergens: ['Gluten', 'Lactosa', 'Huevo'] },
-      { name: 'Salmón a la Plancha', description: 'Lomo de salmón noruego con guarnición de verduritas.', price: 16.00, costPrice: 6.50, category: 'Principales', allergens: ['Pescado'] },
-      { name: 'Pizza Margarita', description: 'Masa fina con tomate San Marzano y mozzarella fresca.', price: 11.00, costPrice: 2.80, category: 'Principales', allergens: ['Gluten', 'Lactosa'] },
-      { name: 'Tarta de Queso', description: 'Al estilo viña, muy cremosa y con el centro líquido.', price: 6.50, costPrice: 1.50, category: 'Postres', allergens: ['Lactosa', 'Huevo', 'Gluten'] },
-      { name: 'Brownie con Helado', description: 'Puro chocolate con nueces y helado de vainilla.', price: 5.50, costPrice: 1.20, category: 'Postres', allergens: ['Gluten', 'Lactosa', 'Huevo', 'Frutos Cáscara'] },
-      { name: 'Cerveza Artesanal', description: 'Doble malta, muy fría.', price: 3.50, costPrice: 1.00, category: 'Bebidas', allergens: ['Gluten'] },
-      { name: 'Refresco de Cola', description: 'Lata 33cl.', price: 2.50, costPrice: 0.60, category: 'Bebidas', allergens: [] }
-    ];
-
-    try {
-      for (const plato of cartaSimulada) {
-        await addDoc(collection(this.firestore, 'platos'), plato);
-      }
-      alert("¡Carta generada con éxito! Tu restaurante ya tiene stock.");
-    } catch (e) {
-      console.error("Error al inyectar el menú:", e);
-      alert("Hubo un error, comprueba la consola.");
-    }
+  private platoVacio() {
+    return { name: '', description: '', price: null, costPrice: null, category: 'Entrantes', allergens: [] as string[] };
   }
 }

@@ -98,7 +98,7 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="text-[10px] font-bold text-zinc-500 uppercase ml-1">Fecha *</label>
-                        <input type="date" [(ngModel)]="nuevaReserva.fecha" class="w-full bg-zinc-800/50 border border-zinc-700 p-3 rounded-xl text-white outline-none focus:border-yellow-500 transition-all text-sm">
+                        <input type="date" [min]="hoy" [(ngModel)]="nuevaReserva.fecha" class="w-full bg-zinc-800/50 border border-zinc-700 p-3 rounded-xl text-white outline-none focus:border-yellow-500 transition-all text-sm">
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-zinc-500 uppercase ml-1">Hora *</label>
@@ -122,4 +122,4 @@
         </div>
     </div>
     }
-</div>
+</div>

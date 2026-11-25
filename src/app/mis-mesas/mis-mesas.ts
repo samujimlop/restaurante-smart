@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, ChangeDetectorRef, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { Firestore, collection, onSnapshot, query, addDoc, updateDoc, doc, getDocs } from '@angular/fire/firestore';
+import { Firestore, collection, onSnapshot, query, addDoc, updateDoc, doc, getDocs, where } from '@angular/fire/firestore';
 import { ToastService } from '../services/toast.service';
 import { AuthService } from '../services/auth.service';
 import {
@@ -60,7 +60,8 @@ export class AdminMesasComponent implements OnInit {
       console.error("Fallo crítico al leer platos de Firebase:", e);
     }
 
-    const q = query(collection(this.firestore, 'comandas'));
+    // Solo las comandas abiertas: las pagadas no hacen falta aquí y crecen cada día.
+    const q = query(collection(this.firestore, 'comandas'), where('estado', '!=', 'Pagada'));
     this.destroyRef.onDestroy(onSnapshot(q, (snap) => {
       this.mesas.forEach(m => m.comanda = null);
       snap.docs.forEach(d => {
@@ -167,6 +168,17 @@ export class AdminMesasComponent implements OnInit {
 
   async guardarNuevaComanda() {
     if (!this.comandaSeleccionada || this.comandaSeleccionada.id) return;
+
+    // Otro camarero puede haber abierto esta mesa mientras el panel estaba abierto:
+    // en vez de crear una segunda comanda, se abre la que ya existe.
+    const abierta = this.mesas[this.comandaSeleccionada.numeroMesa - 1]?.comanda;
+    if (abierta) {
+      this.comandaSeleccionada = JSON.parse(JSON.stringify(abierta));
+      this.toast.show('Esta mesa ya tiene una comanda abierta: añade los platos aquí', 'info');
+      this.cdr.detectChanges();
+      return;
+    }
+
     try {
       this.comandaSeleccionada.fechaCreacion = new Date();
       this.comandaSeleccionada.fecha = new Date().toISOString();
@@ -235,7 +247,7 @@ export class AdminMesasComponent implements OnInit {
     if (pendientes.length > 0) {
       const nombres = Array.from(new Set(pendientes.map((p) => p.name))).join(', ');
       const como = metodo === 'tarjeta' ? 'por tarjeta' : 'en efectivo';
-      alert(`⛔ No se puede cobrar ${como}. Faltan platos por terminar en cocina: [ ${nombres} ]`);
+      this.toast.show(`No se puede cobrar ${como}: faltan en cocina ${nombres}`, 'error');
       return false;
     }
     return true;

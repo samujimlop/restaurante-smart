@@ -49,9 +49,16 @@ service cloud.firestore {
     }
 
     // Carta: pública para clientes; solo gerencia la modifica.
+    // El coste de escandallo no puede guardarse aquí (sería público): va en platos_costes.
     match /platos/{id} {
       allow read: if true;
-      allow write: if esGerente();
+      allow create, update: if esGerente() && !request.resource.data.keys().hasAny(['costPrice']);
+      allow delete: if esGerente();
+    }
+
+    // Costes de los platos (márgenes): solo gerencia.
+    match /platos_costes/{id} {
+      allow read, write: if esGerente();
     }
 
     // Reservas: cualquier cliente puede crear una (validada); solo el personal las ve y gestiona.
@@ -80,8 +87,14 @@ service cloud.firestore {
     match /operaciones_caja/{id} {
       allow read: if permiso('verVentas');
       allow write: if esGerente();
+      // El importe tiene que ser el precio de compra del producto repuesto.
       allow create: if permiso('verInventario')
+        && request.resource.data.keys().hasOnly(['concepto', 'monto', 'tipo', 'fecha', 'esComanda', 'itemId'])
         && request.resource.data.tipo == 'Gasto'
+        && request.resource.data.fecha is timestamp
+        && request.resource.data.itemId is string
+        && request.resource.data.monto
+             == get(/databases/$(database)/documents/inventario/$(request.resource.data.itemId)).data.purchasePrice
         && request.resource.data.concepto is string
         && request.resource.data.concepto.matches('Reposición almacén: .*');
     }

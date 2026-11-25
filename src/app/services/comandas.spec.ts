@@ -6,6 +6,7 @@ import {
   platosPendientes,
   quitarItem,
   sacarDeCocina,
+  sumarEuros,
 } from './comandas';
 
 const item = (name: string, price: number, extra: Partial<ItemComanda> = {}): ItemComanda => ({
@@ -118,5 +119,16 @@ describe('sacarDeCocina', () => {
   it('items antiguos sin id: se reconocen por el nombre', () => {
     const viejo = item('Bravas', 6);
     expect(sacarDeCocina([viejo], [viejo], 'listo').estado).toBe('listo');
+  });
+});
+
+describe('sumarEuros', () => {
+  it('suma y resta importes de caja sin errores de coma flotante', () => {
+    expect(sumarEuros([0.1, 0.2])).toBe(0.3);
+    expect(sumarEuros([100.1, -0.3])).toBe(99.8);
+  });
+
+  it('ignora valores vacíos o no numéricos', () => {
+    expect(sumarEuros([5, undefined, null, 'x', '2.5'])).toBe(7.5);
   });
 });

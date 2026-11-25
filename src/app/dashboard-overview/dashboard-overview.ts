@@ -2,7 +2,7 @@ import { Component, OnInit, inject, ChangeDetectorRef, DestroyRef } from '@angul
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../services/auth.service';
-import { Firestore, collection, onSnapshot, query } from '@angular/fire/firestore';
+import { Firestore, collection, onSnapshot, query, where } from '@angular/fire/firestore';
 
 @Component({
     selector: 'app-dashboard-overview',
@@ -25,29 +25,21 @@ export class DashboardOverviewComponent implements OnInit {
     // NUEVO: Contador de alertas de inventario
     alertasInventario: number = 0;
 
-    // Variables de Roles
-    esAdmin: boolean = false;
-    esStaff: boolean = false;
-    esCocinero: boolean = false;
-    verInventario: boolean = false;
-    verVentas: boolean = false;
+    // Roles y permisos: se leen en directo del perfil, así que si gerencia
+    // cambia un permiso el panel se actualiza sin recargar.
+    get esAdmin() { return this.auth.esGerente(); }
+    get esCocinero() { return this.auth.esCocina(); }
+    get esStaff() { return !this.esAdmin && !this.esCocinero; }
+    get verInventario() { return this.auth.puedeVerInventario(); }
+    get verVentas() { return this.auth.puedeVerVentas(); }
 
     ngOnInit() {
-        // 1. CONTROL DE ACCESO (el staffGuard ya ha cargado el perfil)
-        this.esAdmin = this.auth.esGerente();
-        this.esCocinero = this.auth.esCocina();
-        this.esStaff = !this.esAdmin && !this.esCocinero;
-        this.verInventario = this.auth.puedeVerInventario();
-        this.verVentas = this.auth.puedeVerVentas();
-
-        // 2. ESCUCHA DE FIREBASE: COMANDAS (Mesas ocupadas)
-        const qComandas = query(collection(this.firestore, 'comandas'));
+        // 1. ESCUCHA DE FIREBASE: COMANDAS ABIERTAS (Mesas ocupadas)
+        const qComandas = query(collection(this.firestore, 'comandas'), where('estado', '!=', 'Pagada'));
         this.destroyRef.onDestroy(onSnapshot(qComandas, (snap) => {
-            const activas = snap.docs
-                .map(d => d.data())
-                .filter((c: any) => c.estado !== 'Pagada');
-
-            this.mesasOcupadas = activas.length;
+            // Mesas distintas: si una mesa tuviera dos comandas abiertas, cuenta una vez.
+            const mesas = new Set(snap.docs.map(d => d.data()['numeroMesa']));
+            this.mesasOcupadas = Math.min(mesas.size, this.totalMesas);
             this.porcentajeOcupacion = (this.mesasOcupadas / this.totalMesas) * 100;
             this.cdr.detectChanges();
         }));
@@ -78,4 +70,4 @@ export class DashboardOverviewComponent implements OnInit {
         await this.auth.logout();
         this.router.navigate(['/login']);
     }
-}
+}

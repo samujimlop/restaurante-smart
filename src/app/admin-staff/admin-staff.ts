@@ -18,6 +18,7 @@ import {
   PerfilEmpleado,
   PermisosEmpleado,
 } from '../services/auth.service';
+import { ToastService } from '../services/toast.service';
 
 type EmpleadoListado = PerfilEmpleado & { id: string };
 
@@ -38,6 +39,7 @@ export class AdminStaffComponent implements OnInit {
   private auth = inject(AuthService);
   private cdr = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
+  private toast = inject(ToastService);
 
   empleados: EmpleadoListado[] = [];
   mostrarModal = false;
@@ -107,6 +109,11 @@ export class AdminStaffComponent implements OnInit {
         : ['cocinero', 'cocina'].includes(rolNormalizado)
           ? 'Cocinero'
           : 'Camarero';
+    if (this.editandoId && this.editandoId === this.auth.uid() && rol !== 'Gerente') {
+      this.errorMsg = 'No puedes quitarte a ti mismo el rol de gerente: te quedarías sin acceso.';
+      return;
+    }
+
     const permisos =
       rol === 'Gerente'
         ? { verVentas: true, cobrarMesas: true, verInventario: true }
@@ -149,10 +156,19 @@ export class AdminStaffComponent implements OnInit {
   }
 
   async borrarEmpleado(id: string) {
+    if (id === this.auth.uid()) {
+      this.toast.show('No puedes borrar tu propio acceso', 'error');
+      return;
+    }
     // Al borrar el perfil, la cuenta de Auth deja de tener acceso: las reglas de
-    // Firestore exigen que exista usuarios/{uid}.
-    if (confirm('¿Eliminar este acceso permanentemente?')) {
+    // Firestore exigen que exista usuarios/{uid}. La cuenta de Auth en sí solo se
+    // puede eliminar desde la consola de Firebase (o con el Admin SDK en un servidor).
+    if (!confirm('¿Eliminar este acceso permanentemente?')) return;
+    try {
       await deleteDoc(doc(this.firestore, 'usuarios', id));
+    } catch (error) {
+      console.error('Error al borrar el empleado:', error);
+      this.toast.show('No se ha podido eliminar el acceso', 'error');
     }
   }
 
