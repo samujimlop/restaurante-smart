@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Firestore, collection, query, onSnapshot, doc, updateDoc } from '@angular/fire/firestore';
 import { IaService } from '../services/ia.service';
-import { actualizarItems } from '../services/comandas';
+import { ItemComanda, actualizarItems, esBebida, sacarDeCocina } from '../services/comandas';
 
 @Component({
   selector: 'app-monitor-cocina',
@@ -36,10 +36,7 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
         const itemsCrudos = data['items'] || [];
 
         itemsCrudos.forEach((item: any) => {
-          const cat = item.categoria ? item.categoria.toLowerCase().trim() : '';
-          if (cat === 'bebidas' || cat === 'bebida' || cat === 'refrescos') {
-            return;
-          }
+          if (esBebida(item)) return;
 
           const estadoItem = item.estado || 'pendiente';
 
@@ -94,7 +91,24 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
 
   async cambiarEstado(comandaId: string, nuevoEstado: string) {
     try {
-      await updateDoc(doc(this.firestore, 'comandas', comandaId), { estado: nuevoEstado });
+      if (nuevoEstado === 'listo' || nuevoEstado === 'entregado') {
+        // Sacar la comanda de cocina = sus platos están hechos. Se marcan como
+        // listos en la misma transacción (ver sacarDeCocina) para que sala pueda
+        // cobrarla; solo los que cocina tenía en pantalla.
+        const vistos: ItemComanda[] =
+          [...this.comandasNuevas, ...this.comandasFuegos, ...this.comandasPase].find(
+            (c) => c.id === comandaId,
+          )?.itemsOriginales ?? [];
+        let resultado: { items: ItemComanda[]; estado: string } | undefined;
+        await actualizarItems(
+          this.firestore,
+          comandaId,
+          (items) => (resultado = sacarDeCocina(items, vistos, nuevoEstado)).items,
+          () => resultado?.estado ?? null,
+        );
+      } else {
+        await updateDoc(doc(this.firestore, 'comandas', comandaId), { estado: nuevoEstado });
+      }
     } catch (error) {
       console.error('Error al actualizar estado general:', error);
     }

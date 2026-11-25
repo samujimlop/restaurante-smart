@@ -5,6 +5,9 @@ import { FormsModule } from '@angular/forms';
 import { Firestore, collection, onSnapshot, query, addDoc } from '@angular/fire/firestore';
 import { AuthService } from '../services/auth.service';
 
+/** Cómo se muestra el método de pago; las comandas antiguas no lo tienen y salen como "TPV". */
+const ETIQUETA_METODO: Record<string, string> = { efectivo: 'Efectivo', tarjeta: 'Tarjeta' };
+
 @Component({
   selector: 'app-admin-ventas',
   standalone: true,
@@ -65,7 +68,8 @@ export class AdminVentasComponent implements OnInit, OnDestroy {
         .filter((c: any) => c.estado === 'Pagada') 
         .map((c: any) => ({
           id: c.id,
-          concepto: `Cierre Mesa ${c.numeroMesa} (TPV)`,
+          concepto: `Cierre Mesa ${c.numeroMesa} (${ETIQUETA_METODO[c.metodoPago] ?? 'TPV'})`,
+          metodoPago: c.metodoPago ?? null,
           monto: c.total || 0,
           tipo: 'Ingreso',
           fecha: c.fechaFinalizacion || c.fechaCreacion || null,

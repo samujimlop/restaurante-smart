@@ -119,11 +119,19 @@
               GENERAR COMANDA Y GUARDAR
             </button>
             } @else if (puedeCobrar()) {
-            @if (comandaSeleccionada.estado === 'Solicita_Cuenta') {
+            @if (comandaSeleccionada.estado === 'Aprobada_Para_Pago') {
+            <!-- Paso 2: el cliente ya ha pasado la tarjeta por el datáfono -->
+            <button (click)="confirmarPagoTarjeta()"
+              class="col-span-2 w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-95">
+              <span class="material-symbols-outlined text-sm">task_alt</span>
+              CONFIRMAR PAGO TARJETA
+            </button>
+            } @else {
+            <!-- Paso 1: la mesa queda pendiente del datáfono -->
             <button (click)="aprobarPagoTarjeta()"
               class="col-span-2 w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-95">
               <span class="material-symbols-outlined text-sm">credit_card</span>
-              AUTORIZAR PAGO TARJETA
+              COBRAR CON TARJETA
             </button>
             }
             <button (click)="cobrarEnEfectivo()"
@@ -188,4 +196,4 @@
     </div>
   </div>
   }
-</div>
+</div>

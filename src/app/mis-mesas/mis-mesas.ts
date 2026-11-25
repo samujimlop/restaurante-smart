@@ -4,7 +4,15 @@ import { RouterLink } from '@angular/router';
 import { Firestore, collection, onSnapshot, query, addDoc, updateDoc, doc, getDocs } from '@angular/fire/firestore';
 import { ToastService } from '../services/toast.service';
 import { AuthService } from '../services/auth.service';
-import { ItemComanda, actualizarItems, calcularTotal, quitarItem } from '../services/comandas';
+import {
+  ItemComanda,
+  MetodoPago,
+  actualizarItems,
+  calcularTotal,
+  estadoTrasAnadir,
+  platosPendientes,
+  quitarItem,
+} from '../services/comandas';
 
 @Component({
   selector: 'app-admin-mesas',
@@ -105,7 +113,11 @@ export class AdminMesasComponent implements OnInit {
       categoria: producto.categoria || producto.category || 'Otros'
     };
 
-    await this.modificarItems((items) => [...items, nuevo]);
+    // Si la comanda ya había salido de cocina, un plato nuevo la devuelve a la cola.
+    await this.modificarItems(
+      (items) => [...items, nuevo],
+      (estadoActual) => estadoTrasAnadir(estadoActual, nuevo),
+    );
   }
 
   async eliminarPlatoDeComanda(index: number) {
@@ -119,7 +131,10 @@ export class AdminMesasComponent implements OnInit {
    * transacción sobre los datos del servidor (ver actualizarItems) para no pisar
    * lo que haya cambiado cocina u otro camarero mientras el panel estaba abierto.
    */
-  private async modificarItems(cambio: (items: ItemComanda[]) => ItemComanda[]) {
+  private async modificarItems(
+    cambio: (items: ItemComanda[]) => ItemComanda[],
+    nuevoEstado?: (estadoActual: string | undefined) => string | null,
+  ) {
     const comanda = this.comandaSeleccionada;
     if (!comanda) return;
 
@@ -132,10 +147,16 @@ export class AdminMesasComponent implements OnInit {
     }
 
     try {
-      const { items, total } = await actualizarItems(this.firestore, comanda.id, cambio);
+      const { items, total, estado } = await actualizarItems(
+        this.firestore,
+        comanda.id,
+        cambio,
+        nuevoEstado,
+      );
       if (this.comandaSeleccionada?.id === comanda.id) {
         this.comandaSeleccionada.items = items;
         this.comandaSeleccionada.total = total;
+        if (estado) this.comandaSeleccionada.estado = estado;
       }
     } catch (error) {
       console.error('Error al actualizar la comanda:', error);
@@ -165,76 +186,76 @@ export class AdminMesasComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+  /** Paso 1 del pago con tarjeta: la mesa queda pendiente del datáfono (amarilla). */
   async aprobarPagoTarjeta() {
-    if (!this.comandaSeleccionada || !this.comandaSeleccionada.id) return;
-    if (!this.puedeCobrar()) {
-      this.toast.show('No tienes permiso para cobrar mesas', 'error');
-      return;
-    }
-    
-    if (this.comandaSeleccionada.estado?.toLowerCase() !== 'entregado') {
-      const platosPendientes = this.comandaSeleccionada.items?.filter((item: any) => {
-        const cat = item.categoria ? item.categoria.toLowerCase().trim() : '';
-        if (cat === 'bebidas' || cat === 'bebida' || cat === 'refrescos') return false; 
-        
-        const nom = item.name ? item.name.toLowerCase() : '';
-        if (nom.includes('refresco') || nom.includes('agua') || nom.includes('cerveza') || nom.includes('vino') || nom.includes('café')) return false;
-
-        return item.estado !== 'listo'; 
-      }) || [];
-
-      if (platosPendientes.length > 0) {
-        const nombresFaltantes = Array.from(new Set(platosPendientes.map((p: any) => p.name))).join(', ');
-        alert(`⛔ No se puede cobrar por tarjeta. Faltan platos por terminar en cocina: [ ${nombresFaltantes} ]`);
-        return; 
-      }
-    }
-
+    if (!this.puedeIniciarCobro('tarjeta')) return;
     try {
       await updateDoc(doc(this.firestore, `comandas/${this.comandaSeleccionada.id}`), {
         estado: 'Aprobada_Para_Pago'
       });
       this.cerrarModal();
       this.toast.show('Pendiente de pago en datáfono', 'info');
-    } catch (error) { 
+    } catch (error) {
+      console.error('Error al aprobar el pago con tarjeta:', error);
       this.toast.show('Error al actualizar estado', 'error');
     }
   }
 
+  /** Paso 2 del pago con tarjeta: el datáfono lo ha aceptado y la mesa se cierra. */
+  async confirmarPagoTarjeta() {
+    if (this.comandaSeleccionada?.estado !== 'Aprobada_Para_Pago') return;
+    if (!this.comprobarPermisoCobro()) return;
+    await this.cerrarComanda('tarjeta');
+  }
+
   async cobrarEnEfectivo() {
-    if (!this.comandaSeleccionada || !this.comandaSeleccionada.id) return;
+    if (!this.puedeIniciarCobro('efectivo')) return;
+    await this.cerrarComanda('efectivo');
+  }
+
+  private comprobarPermisoCobro(): boolean {
+    if (!this.comandaSeleccionada?.id) return false;
     if (!this.puedeCobrar()) {
       this.toast.show('No tienes permiso para cobrar mesas', 'error');
-      return;
+      return false;
     }
+    return true;
+  }
 
-    if (this.comandaSeleccionada.estado?.toLowerCase() !== 'entregado') {
-      const platosPendientes = this.comandaSeleccionada.items?.filter((item: any) => {
-        const cat = item.categoria ? item.categoria.toLowerCase().trim() : '';
-        if (cat === 'bebidas' || cat === 'bebida' || cat === 'refrescos') return false; 
-        
-        const nom = item.name ? item.name.toLowerCase() : '';
-        if (nom.includes('refresco') || nom.includes('agua') || nom.includes('cerveza') || nom.includes('vino') || nom.includes('café')) return false;
+  /**
+   * No se cobra una mesa con platos sin terminar. Si la comanda ya está
+   * entregada, cocina ha acabado: añadir un plato después la devuelve a 'nuevo'
+   * (ver estadoTrasAnadir), así que 'entregado' garantiza que no queda nada.
+   */
+  private puedeIniciarCobro(metodo: MetodoPago): boolean {
+    if (!this.comprobarPermisoCobro()) return false;
+    if (this.comandaSeleccionada.estado?.toLowerCase() === 'entregado') return true;
 
-        return item.estado !== 'listo'; 
-      }) || [];
-
-      if (platosPendientes.length > 0) {
-        const nombresFaltantes = Array.from(new Set(platosPendientes.map((p: any) => p.name))).join(', ');
-        alert(`⛔ No se puede cobrar en efectivo. Faltan platos por terminar en cocina: [ ${nombresFaltantes} ]`);
-        return; 
-      }
+    const pendientes = platosPendientes(this.comandaSeleccionada.items);
+    if (pendientes.length > 0) {
+      const nombres = Array.from(new Set(pendientes.map((p) => p.name))).join(', ');
+      const como = metodo === 'tarjeta' ? 'por tarjeta' : 'en efectivo';
+      alert(`⛔ No se puede cobrar ${como}. Faltan platos por terminar en cocina: [ ${nombres} ]`);
+      return false;
     }
+    return true;
+  }
 
+  private async cerrarComanda(metodoPago: MetodoPago) {
     try {
       await updateDoc(doc(this.firestore, `comandas/${this.comandaSeleccionada.id}`), {
         estado: 'Pagada',
+        metodoPago,
         fechaFinalizacion: new Date()
       });
       this.cerrarModal();
-      this.toast.show('Mesa cobrada en efectivo', 'success');
-    } catch (error) { 
+      this.toast.show(
+        metodoPago === 'tarjeta' ? 'Pago con tarjeta confirmado' : 'Mesa cobrada en efectivo',
+        'success',
+      );
+    } catch (error) {
+      console.error('Error al cobrar:', error);
       this.toast.show('Error al cobrar', 'error');
     }
   }
-}
+}
