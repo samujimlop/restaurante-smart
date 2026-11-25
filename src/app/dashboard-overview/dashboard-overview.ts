@@ -29,12 +29,16 @@ export class DashboardOverviewComponent implements OnInit {
     esAdmin: boolean = false;
     esStaff: boolean = false;
     esCocinero: boolean = false;
+    verInventario: boolean = false;
+    verVentas: boolean = false;
 
     ngOnInit() {
         // 1. CONTROL DE ACCESO (el staffGuard ya ha cargado el perfil)
         this.esAdmin = this.auth.esGerente();
         this.esCocinero = this.auth.esCocina();
         this.esStaff = !this.esAdmin && !this.esCocinero;
+        this.verInventario = this.auth.puedeVerInventario();
+        this.verVentas = this.auth.puedeVerVentas();
 
         // 2. ESCUCHA DE FIREBASE: COMANDAS (Mesas ocupadas)
         const qComandas = query(collection(this.firestore, 'comandas'));
@@ -49,8 +53,8 @@ export class DashboardOverviewComponent implements OnInit {
         }));
 
         // 3. ESCUCHA DE FIREBASE: INVENTARIO (Stock crítico)
-        // Solo lanzamos esta consulta si el usuario es Admin (ahorro de lecturas)
-        if (this.esAdmin) {
+        // Solo si el usuario puede ver el inventario (las reglas denegarían la lectura)
+        if (this.verInventario) {
             const qInventario = query(collection(this.firestore, 'inventario'));
             this.destroyRef.onDestroy(onSnapshot(qInventario, (snap) => {
                 let criticos = 0;
@@ -74,4 +78,4 @@ export class DashboardOverviewComponent implements OnInit {
         await this.auth.logout();
         this.router.navigate(['/login']);
     }
-}
+}

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Firestore, collection, query, onSnapshot, doc, updateDoc } from '@angular/fire/firestore';
 import { IaService } from '../services/ia.service';
+import { actualizarItems } from '../services/comandas';
 
 @Component({
   selector: 'app-monitor-cocina',
@@ -103,14 +104,11 @@ export class MonitorCocinaComponent implements OnInit, OnDestroy {
     try {
       const nuevoEstado = completamenteTachado ? 'pendiente' : 'listo';
 
-      const itemsActualizados = comanda.itemsOriginales.map((item: any) => {
-        if (item.name === nombrePlato) {
-          return { ...item, estado: nuevoEstado };
-        }
-        return item;
-      });
-
-      await updateDoc(doc(this.firestore, 'comandas', comanda.id), { items: itemsActualizados });
+      // En transacción: parte de los items actuales del servidor, no de la copia
+      // en pantalla, para no borrar platos que un camarero acabe de añadir.
+      await actualizarItems(this.firestore, comanda.id, (items) =>
+        items.map((item) => (item.name === nombrePlato ? { ...item, estado: nuevoEstado } : item)),
+      );
     } catch (error) {
       console.error('Error al tachar el plato:', error);
     }

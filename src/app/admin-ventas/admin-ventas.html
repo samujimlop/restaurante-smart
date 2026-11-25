@@ -61,6 +61,8 @@
           </div>
         </div>
 
+        <!-- Registrar movimientos es solo de gerencia; el permiso "ver ventas" es de consulta -->
+        @if (esGerente()) {
         <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl shadow-xl print:hidden">
           <h3 class="text-lg font-black text-white mb-4">Registrar Movimiento en Caja</h3>
           <div class="space-y-4">
@@ -86,6 +88,7 @@
             </button>
           </div>
         </div>
+        }
       </div>
 
       <div class="lg:col-span-2 space-y-6">

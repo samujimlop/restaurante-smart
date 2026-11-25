@@ -3,6 +3,7 @@ import { Router, UrlTree, provideRouter } from '@angular/router';
 import { AuthService, PerfilEmpleado } from '../services/auth.service';
 import { adminGuard } from './admin.guard';
 import { staffGuard } from './staff.guard';
+import { permisoGuard } from './permiso.guard';
 
 /** AuthService falso con el perfil indicado (null = sin sesión). */
 function configurar(perfil: PerfilEmpleado | null, esGerente = false) {
@@ -11,7 +12,12 @@ function configurar(perfil: PerfilEmpleado | null, esGerente = false) {
       provideRouter([]),
       {
         provide: AuthService,
-        useValue: { esperarSesion: async () => perfil, esGerente: () => esGerente },
+        useValue: {
+          esperarSesion: async () => perfil,
+          esGerente: () => esGerente,
+          tienePermiso: (p: keyof NonNullable<PerfilEmpleado['permisos']>) =>
+            esGerente || perfil?.permisos?.[p] === true,
+        },
       },
     ],
   });
@@ -54,6 +60,33 @@ describe('adminGuard', () => {
   it('deja pasar a gerencia', async () => {
     configurar(gerente, true);
     expect(await ejecutar(adminGuard)).toBe(true);
+  });
+});
+
+describe('permisoGuard', () => {
+  const conInventario: PerfilEmpleado = {
+    ...camarero,
+    permisos: { verInventario: true, verVentas: false, cobrarMesas: false },
+  };
+
+  it('manda al login si no hay sesión', async () => {
+    configurar(null);
+    expect(ruta(await ejecutar(permisoGuard('verInventario')))).toBe('/login');
+  });
+
+  it('devuelve al panel a un empleado sin el permiso', async () => {
+    configurar(conInventario);
+    expect(ruta(await ejecutar(permisoGuard('verVentas')))).toBe('/admin');
+  });
+
+  it('deja pasar a un empleado con el permiso', async () => {
+    configurar(conInventario);
+    expect(await ejecutar(permisoGuard('verInventario'))).toBe(true);
+  });
+
+  it('deja pasar siempre a gerencia', async () => {
+    configurar(gerente, true);
+    expect(await ejecutar(permisoGuard('verVentas'))).toBe(true);
   });
 });
 

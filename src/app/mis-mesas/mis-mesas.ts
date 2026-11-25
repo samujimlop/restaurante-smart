@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Firestore, collection, onSnapshot, query, addDoc, updateDoc, doc, getDocs } from '@angular/fire/firestore';
 import { ToastService } from '../services/toast.service';
+import { AuthService } from '../services/auth.service';
+import { ItemComanda, actualizarItems, calcularTotal, quitarItem } from '../services/comandas';
 
 @Component({
   selector: 'app-admin-mesas',
@@ -15,6 +17,7 @@ export class AdminMesasComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
   private toast = inject(ToastService);
+  readonly puedeCobrar = inject(AuthService).puedeCobrar;
 
   mesas: any[] = Array.from({ length: 12 }, (_, i) => ({ numero: i + 1, comanda: null }));
 
@@ -60,6 +63,11 @@ export class AdminMesasComponent implements OnInit {
             this.mesas[mesaIndex].comanda = { id: d.id, ...data };
           }
         }
+        // Si la comanda abierta en el panel cambia (p. ej. cocina marca un plato),
+        // el panel se actualiza en vez de quedarse con una copia antigua.
+        if (this.comandaSeleccionada?.id === d.id) {
+          this.comandaSeleccionada = { id: d.id, ...structuredClone(data) };
+        }
       });
       this.cdr.detectChanges();
     }));
@@ -76,7 +84,7 @@ export class AdminMesasComponent implements OnInit {
     } else {
       this.comandaSeleccionada = {
         numeroMesa: mesa.numero,
-        estado: 'nuevo', 
+        estado: 'nuevo',
         items: [],
         total: 0
       };
@@ -89,38 +97,49 @@ export class AdminMesasComponent implements OnInit {
     if (!this.comandaSeleccionada) return;
     if (!this.comandaSeleccionada.items) this.comandaSeleccionada.items = [];
 
-    const precioSeguro = Number(producto.precio || producto.price) || 0;
-    const nombreSeguro = producto.nombre || producto.name || 'Sin nombre';
-    const categoriaSegura = producto.categoria || producto.category || 'Otros';
-
-    this.comandaSeleccionada.items.push({
-      name: nombreSeguro,
-      price: precioSeguro,
+    const nuevo: ItemComanda = {
+      id: crypto.randomUUID(),
+      name: producto.nombre || producto.name || 'Sin nombre',
+      price: Number(producto.precio || producto.price) || 0,
       estado: 'nuevo',
-      categoria: categoriaSegura
-    });
+      categoria: producto.categoria || producto.category || 'Otros'
+    };
 
-    this.comandaSeleccionada.total = this.comandaSeleccionada.items.reduce((acc: number, item: any) => acc + item.price, 0);
-
-    if (this.comandaSeleccionada.id) {
-      await updateDoc(doc(this.firestore, `comandas/${this.comandaSeleccionada.id}`), {
-        items: this.comandaSeleccionada.items,
-        total: this.comandaSeleccionada.total
-      });
-    }
-    this.cdr.detectChanges();
+    await this.modificarItems((items) => [...items, nuevo]);
   }
 
   async eliminarPlatoDeComanda(index: number) {
-    if (!this.comandaSeleccionada || !this.comandaSeleccionada.items) return;
-    this.comandaSeleccionada.items.splice(index, 1);
-    this.comandaSeleccionada.total = this.comandaSeleccionada.items.reduce((acc: number, item: any) => acc + item.price, 0);
+    const objetivo = this.comandaSeleccionada?.items?.[index];
+    if (!objetivo) return;
+    await this.modificarItems((items) => quitarItem(items, objetivo));
+  }
 
-    if (this.comandaSeleccionada.id) {
-      await updateDoc(doc(this.firestore, `comandas/${this.comandaSeleccionada.id}`), {
-        items: this.comandaSeleccionada.items,
-        total: this.comandaSeleccionada.total
-      });
+  /**
+   * Aplica un cambio a los items. Si la comanda ya está guardada, se hace en una
+   * transacción sobre los datos del servidor (ver actualizarItems) para no pisar
+   * lo que haya cambiado cocina u otro camarero mientras el panel estaba abierto.
+   */
+  private async modificarItems(cambio: (items: ItemComanda[]) => ItemComanda[]) {
+    const comanda = this.comandaSeleccionada;
+    if (!comanda) return;
+
+    if (!comanda.id) {
+      // Comanda nueva todavía sin guardar: solo existe en este panel.
+      comanda.items = cambio(comanda.items ?? []);
+      comanda.total = calcularTotal(comanda.items);
+      this.cdr.detectChanges();
+      return;
+    }
+
+    try {
+      const { items, total } = await actualizarItems(this.firestore, comanda.id, cambio);
+      if (this.comandaSeleccionada?.id === comanda.id) {
+        this.comandaSeleccionada.items = items;
+        this.comandaSeleccionada.total = total;
+      }
+    } catch (error) {
+      console.error('Error al actualizar la comanda:', error);
+      this.toast.show('No se ha podido actualizar la comanda', 'error');
     }
     this.cdr.detectChanges();
   }
@@ -129,7 +148,7 @@ export class AdminMesasComponent implements OnInit {
     if (!this.comandaSeleccionada || this.comandaSeleccionada.id) return;
     try {
       this.comandaSeleccionada.fechaCreacion = new Date();
-      this.comandaSeleccionada.fecha = new Date().toISOString(); 
+      this.comandaSeleccionada.fecha = new Date().toISOString();
       const docRef = await addDoc(collection(this.firestore, 'comandas'), this.comandaSeleccionada);
       this.comandaSeleccionada.id = docRef.id;
       this.cerrarModal();
@@ -148,6 +167,10 @@ export class AdminMesasComponent implements OnInit {
 
   async aprobarPagoTarjeta() {
     if (!this.comandaSeleccionada || !this.comandaSeleccionada.id) return;
+    if (!this.puedeCobrar()) {
+      this.toast.show('No tienes permiso para cobrar mesas', 'error');
+      return;
+    }
     
     if (this.comandaSeleccionada.estado?.toLowerCase() !== 'entregado') {
       const platosPendientes = this.comandaSeleccionada.items?.filter((item: any) => {
@@ -180,6 +203,10 @@ export class AdminMesasComponent implements OnInit {
 
   async cobrarEnEfectivo() {
     if (!this.comandaSeleccionada || !this.comandaSeleccionada.id) return;
+    if (!this.puedeCobrar()) {
+      this.toast.show('No tienes permiso para cobrar mesas', 'error');
+      return;
+    }
 
     if (this.comandaSeleccionada.estado?.toLowerCase() !== 'entregado') {
       const platosPendientes = this.comandaSeleccionada.items?.filter((item: any) => {
@@ -210,4 +237,4 @@ export class AdminMesasComponent implements OnInit {
       this.toast.show('Error al cobrar', 'error');
     }
   }
-}
+}

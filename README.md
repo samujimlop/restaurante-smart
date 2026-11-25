@@ -33,6 +33,8 @@ La primera versión del proyecto tenía los fallos típicos de un prototipo: cla
 - **Protección anti-abuso.** **Firebase App Check** con reCAPTCHA Enterprise (Fraud Defense): AI Logic solo atiende peticiones que vienen de la web publicada, así que nadie puede gastar la cuota de Gemini desde fuera.
 - **Autenticación real.** Cada empleado entra con usuario + PIN mediante **Firebase Authentication**. El PIN es la contraseña de su cuenta, así que Firebase lo guarda con hash y limita los intentos. Nunca se guarda en Firestore.
 - **Autorización en el servidor.** Las [reglas de Firestore](firestore.rules) deciden qué colección puede leer o escribir cada rol (cliente, empleado, gerente) y validan las reservas que llegan de clientes anónimos. Los guards de Angular solo controlan la navegación, así que manipular el navegador no da acceso a los datos.
+- **Permisos granulares de empleados.** Gerencia puede gestionar personal; cada camarero puede recibir permisos individuales para cobrar mesas, consultar ventas o administrar inventario.
+- **Comandas sin conflictos de escritura.** Las modificaciones de los items de una comanda se hacen mediante transacciones de Firestore, combinando siempre los cambios con los datos actuales del servidor.
 - **Alta de empleados sin cerrar la sesión del gerente.** Se usa una instancia secundaria de Firebase Auth con persistencia en memoria.
 - **Tests y CI.** Tests unitarios de los guards y del servicio de IA (incluido el modelo de respaldo), ejecutados en GitHub Actions junto al build de producción en cada push.
 - **Sin fugas de memoria.** Todas las suscripciones en tiempo real (`onSnapshot`) se cancelan al destruir el componente mediante `DestroyRef`.

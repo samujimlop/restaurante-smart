@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Firestore, collection, onSnapshot, query, addDoc } from '@angular/fire/firestore';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-admin-ventas',
@@ -13,6 +14,7 @@ import { Firestore, collection, onSnapshot, query, addDoc } from '@angular/fire/
 export class AdminVentasComponent implements OnInit, OnDestroy {
   private firestore: Firestore = inject(Firestore);
   private cdr: ChangeDetectorRef = inject(ChangeDetectorRef);
+  readonly esGerente = inject(AuthService).esGerente;
 
   // Control de interfaz
   modoVista: 'hoy' | 'historial' = 'hoy';
@@ -160,6 +162,7 @@ export class AdminVentasComponent implements OnInit, OnDestroy {
   }
 
   async registrarOperacion() {
+    if (!this.esGerente()) return;
     if (!this.nuevoConcepto || !this.nuevoMonto || this.nuevoMonto <= 0) return;
 
     try {

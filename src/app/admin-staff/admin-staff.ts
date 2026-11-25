@@ -100,8 +100,15 @@ export class AdminStaffComponent implements OnInit {
       }
     }
 
+    const rolNormalizado = datos.rol.trim().toLowerCase();
+    const rol =
+      ['gerente', 'admin', 'administrador', 'jefe'].includes(rolNormalizado)
+        ? 'Gerente'
+        : ['cocinero', 'cocina'].includes(rolNormalizado)
+          ? 'Cocinero'
+          : 'Camarero';
     const permisos =
-      datos.rol === 'Gerente'
+      rol === 'Gerente'
         ? { verVentas: true, cobrarMesas: true, verInventario: true }
         : datos.permisos;
 
@@ -111,7 +118,7 @@ export class AdminStaffComponent implements OnInit {
         await updateDoc(doc(this.firestore, 'usuarios', this.editandoId), {
           nombre: datos.nombre.trim(),
           email: datos.email,
-          rol: datos.rol,
+          rol,
           permisos,
         });
       } else {
@@ -122,7 +129,7 @@ export class AdminStaffComponent implements OnInit {
           nombre: datos.nombre.trim(),
           usuario: datos.usuario,
           email: datos.email,
-          rol: datos.rol,
+          rol,
           permisos,
           fechaAlta: new Date(),
         });

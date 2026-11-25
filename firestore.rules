@@ -25,6 +25,18 @@ service cloud.firestore {
         && get(rutaPerfil()).data.rol.lower() in ['gerente', 'admin', 'administrador', 'jefe'];
     }
 
+    // Permisos especiales del perfil (cobrarMesas, verVentas, verInventario).
+    // Gerencia los tiene todos. Mismo criterio que AuthService.tienePermiso().
+    function permiso(nombre) {
+      return esGerente()
+        || (esEmpleado() && get(rutaPerfil()).data.get('permisos', {}).get(nombre, false) == true);
+    }
+
+    // Cobrar es pasar la comanda a uno de estos estados (o tocarla cuando ya está en ellos).
+    function esEstadoDeCobro(datos) {
+      return datos.get('estado', '') in ['Aprobada_Para_Pago', 'Pagada'];
+    }
+
     function reservaValida(r) {
       return r.keys().hasOnly(['nombre', 'telefono', 'fecha', 'hora', 'personas', 'estado', 'fechaCreacion'])
         && r.nombre is string && r.nombre.size() > 0 && r.nombre.size() <= 80
@@ -48,18 +60,30 @@ service cloud.firestore {
       allow read, update, delete: if esEmpleado();
     }
 
-    // Comandas: sala y cocina.
+    // Comandas: sala y cocina. Cobrar exige el permiso cobrarMesas; borrar, gerencia.
     match /comandas/{id} {
-      allow read, write: if esEmpleado();
+      allow read: if esEmpleado();
+      allow create: if esEmpleado() && !esEstadoDeCobro(request.resource.data);
+      allow update: if esEmpleado()
+        && ((!esEstadoDeCobro(resource.data) && !esEstadoDeCobro(request.resource.data))
+            || permiso('cobrarMesas'));
+      allow delete: if esGerente();
     }
 
-    // Inventario y caja: solo gerencia.
+    // Inventario: gerencia o empleados con verInventario.
     match /inventario/{id} {
-      allow read, write: if esGerente();
+      allow read, write: if permiso('verInventario');
     }
 
+    // Caja: verVentas es de consulta; los movimientos los registra gerencia.
+    // Excepción: quien gestiona el inventario apunta el gasto de reponer stock.
     match /operaciones_caja/{id} {
-      allow read, write: if esGerente();
+      allow read: if permiso('verVentas');
+      allow write: if esGerente();
+      allow create: if permiso('verInventario')
+        && request.resource.data.tipo == 'Gasto'
+        && request.resource.data.concepto is string
+        && request.resource.data.concepto.matches('Reposición almacén: .*');
     }
 
     // Perfiles: cada empleado lee el suyo; solo gerencia los crea, edita o borra.

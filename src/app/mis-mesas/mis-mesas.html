@@ -118,7 +118,7 @@
               <span class="material-symbols-outlined text-sm">save</span>
               GENERAR COMANDA Y GUARDAR
             </button>
-            } @else {
+            } @else if (puedeCobrar()) {
             @if (comandaSeleccionada.estado === 'Solicita_Cuenta') {
             <button (click)="aprobarPagoTarjeta()"
               class="col-span-2 w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all active:scale-95">
@@ -188,4 +188,4 @@
     </div>
   </div>
   }
-</div>
+</div>

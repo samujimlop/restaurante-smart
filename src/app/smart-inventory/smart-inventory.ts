@@ -12,6 +12,7 @@ import {
   updateDoc,
   increment,
   getDocs,
+  writeBatch,
 } from '@angular/fire/firestore';
 import { IaService } from '../services/ia.service';
 
@@ -156,19 +157,24 @@ export class SmartInventory implements OnInit {
   }
 
   async sumarStock(item: any) {
+    // Stock y gasto en un solo lote: o se guardan los dos o ninguno, y la caja cuadra.
+    const lote = writeBatch(this.firestore);
+    lote.update(doc(this.firestore, `inventario/${item.id}`), { stock: increment(1) });
+    const coste = Number(item.purchasePrice) || 0;
+    if (coste > 0) {
+      lote.set(doc(collection(this.firestore, 'operaciones_caja')), {
+        concepto: `Reposición almacén: ${item.name}`,
+        monto: coste,
+        tipo: 'Gasto',
+        fecha: new Date(),
+        esComanda: false,
+      });
+    }
     try {
-      await updateDoc(doc(this.firestore, `inventario/${item.id}`), { stock: increment(1) });
-      const coste = Number(item.purchasePrice) || 0;
-      if (coste > 0) {
-        await addDoc(collection(this.firestore, 'operaciones_caja'), {
-          concepto: `Reposición almacén: ${item.name}`,
-          monto: coste,
-          tipo: 'Gasto',
-          fecha: new Date(),
-          esComanda: false,
-        });
-      }
-    } catch (error) {}
+      await lote.commit();
+    } catch (error) {
+      console.error('Error al reponer stock:', error);
+    }
   }
 
   async restarStock(item: any) {

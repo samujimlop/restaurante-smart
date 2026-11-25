@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { adminGuard } from './guards/admin.guard';
+import { permisoGuard } from './guards/permiso.guard';
 import { staffGuard } from './guards/staff.guard';
 
 // Cada pantalla se carga bajo demanda (lazy loading): el cliente que abre la carta
@@ -39,12 +40,19 @@ export const routes: Routes = [
     canActivate: [staffGuard],
   },
 
-  // Solo gerencia
+  // Gerencia o empleados con el permiso correspondiente
   {
     path: 'inventory',
     loadComponent: () => import('./smart-inventory/smart-inventory').then((m) => m.SmartInventory),
-    canActivate: [adminGuard],
+    canActivate: [permisoGuard('verInventario')],
   },
+  {
+    path: 'admin-ventas',
+    loadComponent: () => import('./admin-ventas/admin-ventas').then((m) => m.AdminVentasComponent),
+    canActivate: [permisoGuard('verVentas')],
+  },
+
+  // Solo gerencia
   {
     path: 'admin-menu',
     loadComponent: () => import('./admin-menu/admin-menu').then((m) => m.AdminMenuComponent),
@@ -53,11 +61,6 @@ export const routes: Routes = [
   {
     path: 'admin-staff',
     loadComponent: () => import('./admin-staff/admin-staff').then((m) => m.AdminStaffComponent),
-    canActivate: [adminGuard],
-  },
-  {
-    path: 'admin-ventas',
-    loadComponent: () => import('./admin-ventas/admin-ventas').then((m) => m.AdminVentasComponent),
     canActivate: [adminGuard],
   },
 

@@ -51,6 +51,11 @@ export class AuthService {
   readonly esGerente = computed(() => ROLES_GERENCIA.includes(this.rol()));
   readonly esCocina = computed(() => ROLES_COCINA.includes(this.rol()));
 
+  /** Gerencia tiene todos los permisos; el resto, solo los marcados en su perfil. */
+  readonly puedeCobrar = computed(() => this.tienePermiso('cobrarMesas'));
+  readonly puedeVerVentas = computed(() => this.tienePermiso('verVentas'));
+  readonly puedeVerInventario = computed(() => this.tienePermiso('verInventario'));
+
   private readonly sesionInicial: Promise<void>;
   private authAltas?: AuthFirebase;
 
@@ -61,6 +66,14 @@ export class AuthService {
         resolve();
       });
     });
+  }
+
+  /**
+   * Mismo criterio que la función permiso() de firestore.rules. La interfaz lo usa
+   * para no mostrar lo que el servidor va a rechazar; la decisión real es de las reglas.
+   */
+  tienePermiso(permiso: keyof PermisosEmpleado): boolean {
+    return this.esGerente() || this.perfil()?.permisos?.[permiso] === true;
   }
 
   static emailDeUsuario(usuario: string): string {
